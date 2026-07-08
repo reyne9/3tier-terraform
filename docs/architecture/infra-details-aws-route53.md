@@ -544,9 +544,9 @@ aws cloudfront wait distribution-deployed \
 
 ## 📝 관련 문서
 
-- **[배포 가이드](deployment-guide.md)**: 전체 인프라 배포 순서
-- **[DR 절차서](dr-failover-procedure.md)**: 재해 복구 체크리스트
-- **[트러블슈팅](troubleshooting.md)**: CloudFront/Route53 문제 해결
+- **[배포 가이드](/docs/runbooks/deployment-guide.md)**: 전체 인프라 배포 순서
+- **[DR 절차서](/docs/runbooks/dr-failover-procedure.md)**: 재해 복구 체크리스트
+- **[트러블슈팅](/docs/runbooks/troubleshooting.md)**: CloudFront/Route53 문제 해결
 
 ---
 

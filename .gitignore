@@ -1,29 +1,36 @@
-
-
+# Terraform local state and plans
+.terraform/
+**/.terraform/
 *terraform/
 *.tfstate
-*.tfstate.backup
-.terraform.lock.hcl 
+*.tfstate.*
+*.tfplan
+tfplan
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
+# Local variables and secrets
 *.tfvars
 *.tfvars.json
+*.pem
+*.pfx
+*.key
 
+# Generated artifacts and local tools
+*.zip
+*.bak
+*.backup
+*.tmp
+*~
+.DS_Store
 AZ
-
-.terraform.tfstate.lock.info
-
 kubectl
-
 $BACKUP_FILE.gx
-
 session-manager-plugin.deb
-
-terraform.tfstate.*
-
-appgw-cert.pem
-
-appgw-key.pem
-
-appgw-selfsigned.pfx
-
 dashboard.json

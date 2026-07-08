@@ -123,8 +123,8 @@ terraform destroy
 
 ## 📖 상세 문서
 
-- **[FIX_SUMMARY_FINAL.md](./FIX_SUMMARY_FINAL.md)** - 완전한 수정 내역 및 기술 세부사항
-- **[TERRAFORM_DESTROY_FIX.md](./TERRAFORM_DESTROY_FIX.md)** - 문제 원인 분석 및 해결 방법
+- **[troubleshooting.md](/docs/runbooks/troubleshooting.md)** - 주요 오류 원인과 해결 방법
+- **[deployment-guide.md](/docs/runbooks/deployment-guide.md)** - 배포와 삭제 전후 점검 흐름
 
 ---
 
@@ -165,4 +165,4 @@ Destroy 전 확인:
 1. **검증 먼저**: `terraform validate`
 2. **계획 확인**: `terraform plan -destroy`
 3. **로그 확인**: destroy 중 cleanup 메시지 확인
-4. **문서 참조**: [FIX_SUMMARY_FINAL.md](./FIX_SUMMARY_FINAL.md)
+4. **문서 참조**: [troubleshooting.md](/docs/runbooks/troubleshooting.md)

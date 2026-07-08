@@ -341,14 +341,13 @@ resource "aws_instance" "backup" {
 
 ## 관련 링크
 
-- **GitHub Repository**: [3tier-terraform](https://github.com/your-username/3tier-terraform)
-- **기술 문서**: [docs/README.md](./README.md)
-- **트러블슈팅 가이드**: [docs/troubleshooting-complete.md](./troubleshooting-complete.md)
-- **DR 절차서**: [docs/dr-failover-procedure.md](./dr-failover-procedure.md)
+- **GitHub Repository**: [3tier-terraform](https://github.com/c1oud9/3tier-terraform)
+- **기술 문서**: [docs/README.md](/docs/README.md)
+- **트러블슈팅 가이드**: [docs/runbooks/troubleshooting.md](/docs/runbooks/troubleshooting.md)
+- **DR 절차서**: [docs/dr-failover-procedure.md](/docs/runbooks/dr-failover-procedure.md)
 
 ---
 
 ## 기술 키워드
 
 `Terraform` `AWS` `Azure` `Multi-Cloud` `DR` `EKS` `AKS` `Kubernetes` `RDS` `MySQL` `CloudFront` `Route53` `CloudWatch` `Lambda` `GitHub Actions` `ArgoCD` `GitOps` `Spring Boot` `Nginx` `Docker` `IaC` `High Availability` `Pilot Light`
- 

@@ -2834,7 +2834,7 @@ kubectl logs -n was -l app=was-spring | grep -i "started"
 
 #### 예방 조치
 
-**Terraform validation 추가** ([codes/azure/2-emergency/variables.tf](../codes/azure/2-emergency/variables.tf:52-55)):
+**Terraform validation 추가** ([codes/azure/2-emergency/variables.tf](/codes/azure/2-emergency/variables.tf)):
 ```hcl
 variable "db_username" {
   description = "MySQL 관리자 사용자명 (Azure MySQL Flexible Server는 'mysqladmin' 사용)"
@@ -2849,7 +2849,7 @@ variable "db_username" {
 }
 ```
 
-**자동 배포 스크립트 사용** ([codes/azure/2-emergency/scripts/deploy-complete.sh](../codes/azure/2-emergency/scripts/deploy-complete.sh)):
+**자동 배포 스크립트 사용** ([codes/azure/2-emergency/scripts/deploy-complete.sh](/codes/azure/2-emergency/scripts/deploy-complete.sh)):
 ```bash
 cd /home/ubuntu/3tier-terraform/codes/azure/2-emergency
 ./scripts/deploy-complete.sh
@@ -2971,7 +2971,7 @@ curl http://$APPGW_IP/ | grep -o "PetClinic.*v[0-9.]*"
 
 #### 예방 조치
 
-**1. Terraform variables에서 default 제거** ([codes/azure/2-emergency/variables.tf](../codes/azure/2-emergency/variables.tf:123-128)):
+**1. Terraform variables에서 default 제거** ([codes/azure/2-emergency/variables.tf](/codes/azure/2-emergency/variables.tf)):
 ```hcl
 variable "backend_ip_addresses" {
   description = "Application Gateway Backend IP 주소 리스트 (WAS LoadBalancer External IP)"

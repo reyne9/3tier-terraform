@@ -769,7 +769,7 @@ terraform destroy -auto-approve
 - **[AKS 가격 계산기](https://azure.microsoft.com/en-us/pricing/calculator/)**
 - **[MySQL Flexible Server HA](https://learn.microsoft.com/en-us/azure/mysql/flexible-server/concepts-high-availability)**
 - **[Application Gateway 가격](https://azure.microsoft.com/en-us/pricing/details/application-gateway/)**
-- **[DR 절차서](dr-failover-procedure.md)**
+- **[DR 절차서](/docs/runbooks/dr-failover-procedure.md)**
 
 ---
 

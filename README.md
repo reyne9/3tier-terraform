@@ -19,9 +19,9 @@
 
 ### 전체 구조
 
-포트폴리오용 최신 아키텍처 다이어그램은 [docs/interview-prep/architecture-slides](docs/interview-prep/architecture-slides)에서 확인할 수 있습니다.
+포트폴리오용 최신 아키텍처 다이어그램은 [docs/interview-prep/architecture-slides](/docs/interview-prep/architecture-slides)에서 확인할 수 있습니다.
 
-![Multi-Cloud DR Overview](docs/interview-prep/architecture-slides/01-overview-flow.png)
+![Multi-Cloud DR Overview](/docs/interview-prep/architecture-slides/01-overview-flow.png)
 
 
 ### 기술 스택
@@ -67,14 +67,10 @@
 │       ├── 1-always/         # 상시 대기 리소스 (Storage, VNet, 점검 페이지)
 │       └── 2-emergency/      # 재해 복구 리소스 (MySQL, AKS, App Gateway)
 ├── docs/
-│   ├── PORTFOLIO_REPORT.md       # 전체 프로젝트 포트폴리오 보고서
-│   ├── interview-prep/            # 면접 복습 자료 및 최신 아키텍처 다이어그램
-│   ├── deployment-guide.md       # 배포 가이드
-│   ├── troubleshooting.md        # 트러블슈팅
-│   ├── dr-failover-procedure.md  # DR 절차서
-│   ├── DR_TEST_GUIDE.md          # DR 테스트 가이드
-│   ├── DESTROY_GUIDE.md          # 인프라 삭제 가이드
-│   └── route53-health-check-guide.md  # Route53 헬스체크 가이드
+│   ├── overview/                 # 포트폴리오와 프로젝트 개요
+│   ├── runbooks/                 # 배포, DR, 테스트, 삭제, 트러블슈팅 절차
+│   ├── architecture/             # AWS/Azure/보안/Failover 상세 설계
+│   └── interview-prep/           # 면접 복습 자료 및 최신 아키텍처 다이어그램
 └── README.md
 ```
 
@@ -82,13 +78,14 @@
 
 | 디렉토리 | 설명 | 관련 문서 |
 |----------|------|-----------|
-| `codes/aws/1. route53/` | CloudFront Origin Failover, Route53 DNS 관리 | [route53-health-check-guide.md](docs/route53-health-check-guide.md) |
-| `codes/aws/2. service/` | VPC, EKS, RDS, 백업 인스턴스 - AWS Primary Site 핵심 인프라 | [deployment-guide.md](docs/deployment-guide.md) |
-| `codes/aws/3. monitoring/` | CloudWatch 알람 (20+), 대시보드, 자동 복구 Lambda | [PORTFOLIO_REPORT.md](docs/PORTFOLIO_REPORT.md) |
+| `codes/aws/1. route53/` | CloudFront Origin Failover, Route53 DNS 관리 | [route53-health-check-guide.md](/docs/architecture/route53-health-check-guide.md) |
+| `codes/aws/2. service/` | VPC, EKS, RDS, 백업 인스턴스 - AWS Primary Site 핵심 인프라 | [deployment-guide.md](/docs/runbooks/deployment-guide.md) |
+| `codes/aws/3. monitoring/` | CloudWatch 알람 (20+), 대시보드, 자동 복구 Lambda | [PORTFOLIO_REPORT.md](/docs/overview/PORTFOLIO_REPORT.md) |
 | `codes/aws/4-cicd/` | GitHub Actions, Keptn 기반 CI/CD 파이프라인 | [README.md](codes/aws/4-cicd/README.md) |
 | `codes/azure/1-always/` | 상시 대기 (~$5/월): VNet, Storage, 점검 페이지 | [README.md](codes/azure/1-always/README.md) |
 | `codes/azure/2-emergency/` | 긴급 복구 시 배포: MySQL, AKS, Application Gateway, PetClinic 매니페스트 | [README.md](codes/azure/2-emergency/README.md) |
-| `docs/interview-prep/` | 면접 대비 복습 자료, 실제 구현 상세, Q&A 카드, 포트폴리오 다이어그램 | [README.md](docs/interview-prep/README.md) |
+| `docs/` | 포트폴리오, 실행 절차, 아키텍처 상세, 면접 대비 자료 | [README.md](/docs/README.md) |
+| `docs/interview-prep/` | 면접 대비 복습 자료, 실제 구현 상세, Q&A 카드, 포트폴리오 다이어그램 | [README.md](/docs/interview-prep/README.md) |
 
 ---
 
@@ -254,16 +251,16 @@ curl -I https://blueisthenewblack.store/
 ## 📚 문서
 
 ### 핵심 문서
-- **[포트폴리오 보고서](docs/PORTFOLIO_REPORT.md)**: 전체 프로젝트 개요 및 설계 철학
-- **[배포 가이드](docs/deployment-guide.md)**: AWS 및 Azure 인프라 배포 가이드
-- **[DR 절차서](docs/dr-failover-procedure.md)**: 재해 복구 체크리스트
-- **[트러블슈팅](docs/troubleshooting.md)**: 문제 해결 가이드
+- **[포트폴리오 보고서](/docs/overview/PORTFOLIO_REPORT.md)**: 전체 프로젝트 개요 및 설계 철학
+- **[배포 가이드](/docs/runbooks/deployment-guide.md)**: AWS 및 Azure 인프라 배포 가이드
+- **[DR 절차서](/docs/runbooks/dr-failover-procedure.md)**: 재해 복구 체크리스트
+- **[트러블슈팅](/docs/runbooks/troubleshooting.md)**: 문제 해결 가이드
 
 ### 세부 문서
-- **[DR 테스트 가이드](docs/DR_TEST_GUIDE.md)**: 재해 복구 시뮬레이션 테스트
-- **[인프라 삭제 가이드](docs/DESTROY_GUIDE.md)**: Terraform destroy 순서
-- **[Route53 헬스체크 가이드](docs/route53-health-check-guide.md)**: CloudFront failover 설정
-- **[Failover 구성](docs/FAILOVER_CONFIGURATION.md)**: Failover 상세 설정
+- **[DR 테스트 가이드](/docs/runbooks/DR_TEST_GUIDE.md)**: 재해 복구 시뮬레이션 테스트
+- **[인프라 삭제 가이드](/docs/runbooks/DESTROY_GUIDE.md)**: Terraform destroy 순서
+- **[Route53 헬스체크 가이드](/docs/architecture/route53-health-check-guide.md)**: CloudFront failover 설정
+- **[Failover 구성](/docs/architecture/FAILOVER_CONFIGURATION.md)**: Failover 상세 설정
 
 ---
 

@@ -929,11 +929,9 @@ terraform destroy
 
 ## 📝 관련 문서
 
-- **[VPC 모듈 상세](./modules/vpc/README.md)**: VPC, Subnet, NAT Gateway 설계
-- **[EKS 모듈 상세](./modules/eks/README.md)**: EKS 클러스터, Node Group, IRSA
-- **[RDS 모듈 상세](./modules/rds/README.md)**: RDS MySQL Multi-AZ, 백업 전략
-- **[배포 가이드](../docs/deployment-guide.md)**: 전체 배포 순서
-- **[트러블슈팅](../docs/troubleshooting.md)**: 문제 해결 가이드
+- **[AWS 서비스 Terraform 코드](/codes/aws/2.%20service/)**: VPC, EKS, RDS, Backup 인프라 구현
+- **[배포 가이드](/docs/runbooks/deployment-guide.md)**: 전체 배포 순서
+- **[트러블슈팅](/docs/runbooks/troubleshooting.md)**: 문제 해결 가이드
 
 ---
 
