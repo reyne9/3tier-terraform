@@ -61,7 +61,7 @@ output "resource_group_name" {
 
 output "deployment_summary" {
   description = "배포 요약"
-  value = <<-EOT
+  value       = <<-EOT
 
   ========================================
   PlanB Azure 2-emergency 배포 완료

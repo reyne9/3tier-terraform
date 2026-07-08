@@ -25,7 +25,7 @@ fi
 
 echo ""
 echo "[1/3] Switching to AWS EKS context..."
-kubectl config use-context arn:aws:eks:ap-northeast-2:822837196792:cluster/blue-eks
+kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks
 
 echo ""
 echo "[2/3] Scaling down WAS deployment..."

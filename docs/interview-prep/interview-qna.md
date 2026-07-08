@@ -132,7 +132,7 @@ Terraform은 state를 기준으로 코드와 실제 인프라의 차이를 계�
 
 ### Q. 이 프로젝트에서 보안상 아쉬운 점은?
 
-EKS public endpoint가 전체 CIDR에 열려 있고, DB 비밀번호가 일부 코드에 남아 있으며, Azure MySQL의 SSL 강제와 방화벽 설정이 운영 기준으로는 약합니다. 운영 환경이라면 private endpoint, 최소 권한, secret manager, remote state 암호화, public CIDR 제한을 적용해야 합니다.
+EKS public endpoint가 전체 CIDR에 열려 있고, Azure MySQL의 SSL 강제와 방화벽 설정이 운영 기준으로는 약합니다. DB 비밀번호는 코드 하드코딩 대신 변수/환경변수로 정리했지만, 운영 환경이라면 private endpoint, 최소 권한, secret manager, remote state 암호화, public CIDR 제한을 함께 적용해야 합니다.
 
 ### Q. DB 비밀번호를 코드에 넣으면 왜 문제인가요?
 
@@ -155,4 +155,3 @@ AWS 쪽은 VPC를 Public, Web, WAS, RDS subnet으로 나누고, EKS에는 Web/WA
 장애 대응은 두 단계로 나눴습니다. 먼저 CloudFront Origin Group에서 AWS ALB를 primary origin, Azure Blob static website를 secondary origin으로 두어 5xx 장애 시 점검 페이지를 제공합니다. 이 단계는 사용자에게 실패 화면 대신 통제된 안내를 주기 위한 것입니다. 이후 운영자가 장기 장애라고 판단하면 Azure `2-emergency` Terraform을 적용해 AKS, Application Gateway, Azure MySQL을 만들고, Azure Blob에 보관된 DB 백업을 복구한 뒤 서비스를 Azure 쪽으로 전환합니다.
 
 이 구조는 Active-Active가 아니라 비용을 고려한 Pilot Light/수동 DR에 가깝습니다. 그래서 RTO는 점검 페이지 전환과 전체 서비스 복구를 분리해서 봐야 하고, RPO는 백업 주기에 의존합니다. 개선점으로는 EKS public endpoint CIDR 제한, Secret 관리, Azure MySQL private endpoint/SSL 강화, App Gateway backend 자동화, DB 실시간 복제 또는 CDC 기반 동기화가 있습니다.
-

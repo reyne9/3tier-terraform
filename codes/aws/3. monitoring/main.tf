@@ -109,13 +109,13 @@ resource "aws_sns_topic_subscription" "route53_email" {
 
 # Slack 채널 구성을 위한 AWS Chatbot 설정 (ap-northeast-2)
 resource "aws_chatbot_slack_channel_configuration" "alerts" {
-  count                  = var.slack_workspace_id != "" && var.slack_channel_id != "" ? 1 : 0
-  configuration_name     = "${var.environment}-eks-monitoring-slack"
-  iam_role_arn           = aws_iam_role.chatbot[0].arn
-  slack_channel_id       = var.slack_channel_id
-  slack_team_id          = var.slack_workspace_id
-  sns_topic_arns         = [aws_sns_topic.alerts.arn]
-  logging_level          = "INFO"
+  count              = var.slack_workspace_id != "" && var.slack_channel_id != "" ? 1 : 0
+  configuration_name = "${var.environment}-eks-monitoring-slack"
+  iam_role_arn       = aws_iam_role.chatbot[0].arn
+  slack_channel_id   = var.slack_channel_id
+  slack_team_id      = var.slack_workspace_id
+  sns_topic_arns     = [aws_sns_topic.alerts.arn]
+  logging_level      = "INFO"
 
   tags = {
     Name = "${var.environment}-eks-monitoring-slack"
@@ -124,14 +124,14 @@ resource "aws_chatbot_slack_channel_configuration" "alerts" {
 
 # Slack 채널 구성을 위한 AWS Chatbot 설정 (us-east-1 for Route53)
 resource "aws_chatbot_slack_channel_configuration" "route53_alerts" {
-  provider               = aws.us_east_1
-  count                  = var.slack_workspace_id != "" && var.slack_channel_id != "" ? 1 : 0
-  configuration_name     = "${var.environment}-route53-monitoring-slack"
-  iam_role_arn           = aws_iam_role.chatbot_useast1[0].arn
-  slack_channel_id       = var.slack_channel_id
-  slack_team_id          = var.slack_workspace_id
-  sns_topic_arns         = [aws_sns_topic.route53_alerts.arn]
-  logging_level          = "INFO"
+  provider           = aws.us_east_1
+  count              = var.slack_workspace_id != "" && var.slack_channel_id != "" ? 1 : 0
+  configuration_name = "${var.environment}-route53-monitoring-slack"
+  iam_role_arn       = aws_iam_role.chatbot_useast1[0].arn
+  slack_channel_id   = var.slack_channel_id
+  slack_team_id      = var.slack_workspace_id
+  sns_topic_arns     = [aws_sns_topic.route53_alerts.arn]
+  logging_level      = "INFO"
 
   tags = {
     Name = "${var.environment}-route53-monitoring-slack"
@@ -491,8 +491,8 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer  = var.alb_arn_suffix
-    TargetGroup   = var.target_group_arn_suffix
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = var.target_group_arn_suffix
   }
 
   tags = {
@@ -1009,7 +1009,7 @@ resource "aws_cloudwatch_metric_alarm" "route53_aws_alb_health" {
 
 # Composite Alarm: 모든 Health Check가 실패했을 때
 resource "aws_cloudwatch_composite_alarm" "all_sites_down" {
-  provider         = aws.us_east_1
+  provider          = aws.us_east_1
   count             = var.enable_route53_monitoring && var.primary_health_check_id != "" && var.secondary_health_check_id != "" ? 1 : 0
   alarm_name        = "${var.environment}-all-sites-down-critical"
   alarm_description = "CRITICAL: Primary와 Secondary 사이트 모두 Health Check 실패"
@@ -1127,9 +1127,9 @@ resource "aws_lambda_function" "auto_recovery" {
 
   environment {
     variables = {
-      CLUSTER_NAME    = var.eks_cluster_name
-      SNS_TOPIC_ARN   = aws_sns_topic.alerts.arn
-      ENVIRONMENT     = var.environment
+      CLUSTER_NAME  = var.eks_cluster_name
+      SNS_TOPIC_ARN = aws_sns_topic.alerts.arn
+      ENVIRONMENT   = var.environment
     }
   }
 
@@ -1300,9 +1300,9 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 12
         height = 4
         properties = {
-          title  = "EC2 Status Check Failed"
-          region = var.aws_region
-          view   = "singleValue"
+          title   = "EC2 Status Check Failed"
+          region  = var.aws_region
+          view    = "singleValue"
           stacked = true
           metrics = [
             ["AWS/EC2", "StatusCheckFailed", { stat = "Sum", label = "Status Check Failed" }],
@@ -1815,9 +1815,9 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 6
         height = 6
         properties = {
-          title  = "AWS ALB Direct Health Check"
-          region = "us-east-1"
-          view   = "singleValue"
+          title   = "AWS ALB Direct Health Check"
+          region  = "us-east-1"
+          view    = "singleValue"
           stacked = true
           metrics = var.aws_alb_health_check_id != "" ? [
             ["AWS/Route53", "HealthCheckStatus", "HealthCheckId", var.aws_alb_health_check_id, { stat = "Minimum", label = "ALB Status (1=Healthy)", color = "#1f77b4" }]
@@ -1842,9 +1842,9 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 6
         height = 6
         properties = {
-          title  = "CloudFront (End-to-End) Health Check"
-          region = "us-east-1"
-          view   = "singleValue"
+          title   = "CloudFront (End-to-End) Health Check"
+          region  = "us-east-1"
+          view    = "singleValue"
           stacked = true
           metrics = var.primary_health_check_id != "" ? [
             ["AWS/Route53", "HealthCheckStatus", "HealthCheckId", var.primary_health_check_id, { stat = "Minimum", label = "Health Status (1=Healthy)", color = "#2ca02c" }]
@@ -2023,7 +2023,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 12
         height = 4
         properties = {
-          title  = "Infrastructure Alarms"
+          title = "Infrastructure Alarms"
           alarms = [
             aws_cloudwatch_metric_alarm.node_cpu_high.arn,
             aws_cloudwatch_metric_alarm.node_memory_high.arn,
@@ -2040,7 +2040,7 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 12
         height = 4
         properties = {
-          title  = "Application & Database Alarms"
+          title = "Application & Database Alarms"
           alarms = concat(
             [
               aws_cloudwatch_metric_alarm.pod_cpu_high.arn,

@@ -89,7 +89,7 @@ output "frontdoor_id" {
 
 output "deployment_summary" {
   description = "배포 요약"
-  value = <<-EOT
+  value       = <<-EOT
 
   ========================================
   PlanB Azure 1-always 배포 완료

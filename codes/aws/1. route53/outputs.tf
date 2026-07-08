@@ -18,11 +18,11 @@ output "route53_zone_name" {
 output "dns_record" {
   description = "Route53 DNS 레코드 정보"
   value = var.enable_custom_domain && local.alb_dns_name != null ? {
-    domain     = var.domain_name
-    type       = "A (Alias to CloudFront)"
-    target     = aws_cloudfront_distribution.main[0].domain_name
-    status     = "Active"
-  } : {
+    domain = var.domain_name
+    type   = "A (Alias to CloudFront)"
+    target = aws_cloudfront_distribution.main[0].domain_name
+    status = "Active"
+    } : {
     status = "Not configured"
   }
 }
@@ -58,12 +58,12 @@ output "cloudfront_status" {
 output "origin_failover_config" {
   description = "CloudFront Origin Failover 구성"
   value = var.enable_custom_domain && local.alb_dns_name != null ? {
-    failover_enabled   = true
-    primary_origin     = local.alb_dns_name
-    secondary_origin   = "${var.azure_storage_account_name}.z12.web.core.windows.net"
-    failover_codes     = [500, 502, 503, 504]
-    origin_group_id    = "multi-cloud-failover-group"
-  } : {
+    failover_enabled = true
+    primary_origin   = local.alb_dns_name
+    secondary_origin = "${var.azure_storage_account_name}.z12.web.core.windows.net"
+    failover_codes   = [500, 502, 503, 504]
+    origin_group_id  = "multi-cloud-failover-group"
+    } : {
     failover_enabled = false
     message          = "Custom domain is disabled or ALB not configured"
   }
@@ -77,7 +77,7 @@ output "ssl_certificate_info" {
     status           = data.aws_acm_certificate.main[0].status
     https_enabled    = true
     certificate_type = "ACM (us-east-1)"
-  } : {
+    } : {
     https_enabled = false
     message       = "ACM certificate not found in us-east-1"
   }
@@ -114,9 +114,9 @@ output "monitoring_commands" {
 output "health_check_ids" {
   description = "Route53 Health Check ID 목록"
   value = var.enable_custom_domain ? {
-    aws_alb_health_check_id      = length(aws_route53_health_check.aws_alb) > 0 ? aws_route53_health_check.aws_alb[0].id : ""
-    cloudfront_health_check_id   = length(aws_route53_health_check.cloudfront) > 0 ? aws_route53_health_check.cloudfront[0].id : ""
-    azure_blob_health_check_id   = length(aws_route53_health_check.azure_blob) > 0 ? aws_route53_health_check.azure_blob[0].id : ""
+    aws_alb_health_check_id    = length(aws_route53_health_check.aws_alb) > 0 ? aws_route53_health_check.aws_alb[0].id : ""
+    cloudfront_health_check_id = length(aws_route53_health_check.cloudfront) > 0 ? aws_route53_health_check.cloudfront[0].id : ""
+    azure_blob_health_check_id = length(aws_route53_health_check.azure_blob) > 0 ? aws_route53_health_check.azure_blob[0].id : ""
   } : {}
 }
 
@@ -124,25 +124,25 @@ output "health_check_config" {
   description = "Route53 Health Check 구성 정보"
   value = var.enable_custom_domain ? {
     aws_alb = length(aws_route53_health_check.aws_alb) > 0 ? {
-      id       = aws_route53_health_check.aws_alb[0].id
-      fqdn     = local.alb_dns_name
-      type     = "HTTP"
-      port     = 80
-      purpose  = "AWS ALB 직접 모니터링 (페일오버 감지용)"
+      id      = aws_route53_health_check.aws_alb[0].id
+      fqdn    = local.alb_dns_name
+      type    = "HTTP"
+      port    = 80
+      purpose = "AWS ALB 직접 모니터링 (페일오버 감지용)"
     } : null
     cloudfront = length(aws_route53_health_check.cloudfront) > 0 ? {
-      id       = aws_route53_health_check.cloudfront[0].id
-      fqdn     = var.domain_name
-      type     = "HTTPS_STR_MATCH"
-      port     = 443
-      purpose  = "CloudFront End-to-End 모니터링"
+      id      = aws_route53_health_check.cloudfront[0].id
+      fqdn    = var.domain_name
+      type    = "HTTPS_STR_MATCH"
+      port    = 443
+      purpose = "CloudFront End-to-End 모니터링"
     } : null
     azure_blob = length(aws_route53_health_check.azure_blob) > 0 ? {
-      id       = aws_route53_health_check.azure_blob[0].id
-      fqdn     = "${var.azure_storage_account_name}.z12.web.core.windows.net"
-      type     = "HTTPS"
-      port     = 443
-      purpose  = "Azure Blob Storage 백업 사이트 모니터링"
+      id      = aws_route53_health_check.azure_blob[0].id
+      fqdn    = "${var.azure_storage_account_name}.z12.web.core.windows.net"
+      type    = "HTTPS"
+      port    = 443
+      purpose = "Azure Blob Storage 백업 사이트 모니터링"
     } : null
   } : {}
 }
@@ -150,10 +150,10 @@ output "health_check_config" {
 output "health_check_commands" {
   description = "Health Check 관리 명령어"
   value = var.enable_custom_domain && length(aws_route53_health_check.aws_alb) > 0 ? {
-    check_aws_status     = "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.aws_alb[0].id}"
+    check_aws_status        = "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.aws_alb[0].id}"
     check_cloudfront_status = length(aws_route53_health_check.cloudfront) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.cloudfront[0].id}" : ""
-    check_azure_status   = length(aws_route53_health_check.azure_blob) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.azure_blob[0].id}" : ""
-    list_all_checks      = "aws route53 list-health-checks"
+    check_azure_status      = length(aws_route53_health_check.azure_blob) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.azure_blob[0].id}" : ""
+    list_all_checks         = "aws route53 list-health-checks"
   } : {}
 }
 
@@ -163,5 +163,5 @@ output "health_check_commands" {
 
 output "deployment_summary" {
   description = "배포 요약 정보"
-  value = var.enable_custom_domain && local.alb_dns_name != null ? "CloudFront + Route53 deployment completed" : "Custom domain is disabled or ALB not configured. Please check terraform.tfvars."
+  value       = var.enable_custom_domain && local.alb_dns_name != null ? "CloudFront + Route53 deployment completed" : "Custom domain is disabled or ALB not configured. Please check terraform.tfvars."
 }

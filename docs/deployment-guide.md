@@ -63,7 +63,7 @@ ALB (Application Load Balancer)
 aws sts get-caller-identity
 
 # 출력 예시:
-# Account: 822837196792
+# Account: ACCOUNT_ID
 # Region: ap-northeast-2
 ```
 
@@ -102,7 +102,7 @@ backup_schedule_cron = "0 3 * * *"  # 매일 UTC 03시 (KST 12시)
 # 데이터베이스
 db_name     = "petclinic"
 db_username = "admin"
-db_password = "byemyblue"
+db_password = "CHANGE_ME_DB_PASSWORD"
 
 # RDS 설정
 rds_instance_class = "db.t3.medium"
@@ -228,7 +228,7 @@ RDS_ENDPOINT=$(cd .. && terraform output -raw rds_endpoint | cut -d: -f1)
 kubectl create secret generic db-credentials --namespace=was \
   --from-literal=url="jdbc:mysql://${RDS_ENDPOINT}:3306/petclinic" \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue"
+  --from-literal=password="CHANGE_ME_DB_PASSWORD"
 ```
 
 Secret 확인:
@@ -358,11 +358,11 @@ kubectl exec -it deployment/was-spring -n was -- bash
 
 # MySQL 연결 테스트 (Pod 내부)
 mysql -h blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com \
-  -u admin -pbyemyblue -e "SELECT 1;"
+  -u admin -pCHANGE_ME_DB_PASSWORD -e "SELECT 1;"
 
 # 데이터베이스 확인
 mysql -h blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com \
-  -u admin -pbyemyblue -e "SHOW DATABASES;"
+  -u admin -pCHANGE_ME_DB_PASSWORD -e "SHOW DATABASES;"
 ```
 
 ### 6. 백업 인스턴스 확인
@@ -442,7 +442,7 @@ kubectl delete secret db-credentials -n was
 kubectl create secret generic db-credentials --namespace=was \
   --from-literal=url="jdbc:mysql://RDS_HOST:3306/petclinic" \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue"
+  --from-literal=password="CHANGE_ME_DB_PASSWORD"
 ```
 
 3. RDS 보안 그룹 확인:

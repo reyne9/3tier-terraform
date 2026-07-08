@@ -105,10 +105,12 @@ kubectl create namespace web
 kubectl create namespace was
 
 # DB credentials secret 생성
+export DB_PASSWORD="<azure-mysql-password>"
+
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://mysql-dr-blue.mysql.database.azure.com:3306/petclinic" \
   --from-literal=username="mysqladmin" \
-  --from-literal=password="byemyblue1!" \
+  --from-literal=password="${DB_PASSWORD}" \
   --namespace=was
 ```
 
@@ -259,7 +261,7 @@ kubectl delete secret db-credentials -n was
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://mysql-dr-blue.mysql.database.azure.com:3306/petclinic" \
   --from-literal=username="mysqladmin" \
-  --from-literal=password="byemyblue1!" \
+  --from-literal=password="${DB_PASSWORD}" \
   --namespace=was
 
 # Pod 재시작

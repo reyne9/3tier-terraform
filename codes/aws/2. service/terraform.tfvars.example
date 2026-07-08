@@ -28,9 +28,9 @@ backup_instance_ssh_public_key = ""
 # 데이터베이스 설정
 # =================================================
 
-db_name     = "pocketbank"
+db_name     = "petclinic"
 db_username = "admin"
-db_password = "byemyblue"  # 실제 사용 시 환경변수 권장
+db_password = "CHANGE_ME_USE_TFVARS_OR_ENV"  # 실제 값은 커밋하지 말 것
 
 # =================================================
 # VPC 설정
@@ -70,4 +70,3 @@ rds_max_allocated_storage = 200
 rds_multi_az              = true
 rds_skip_final_snapshot   = true
 rds_deletion_protection   = false
-

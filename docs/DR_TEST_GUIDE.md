@@ -82,7 +82,7 @@ az afd origin update \
 
 ```bash
 # AWS Pod 재시작
-kubectl config use-context arn:aws:eks:ap-northeast-2:822837196792:cluster/blue-eks
+kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks
 kubectl scale deployment petclinic-was -n was --replicas=2
 kubectl scale deployment web-nginx -n web --replicas=2
 ```

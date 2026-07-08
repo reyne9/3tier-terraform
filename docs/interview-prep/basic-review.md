@@ -324,7 +324,7 @@ Pod는 컨테이너가 실행되는 최소 단위다. Deployment는 원하는 Po
 
 답변 골격:
 
-> Git 이력, Terraform state, plan 로그 등에 비밀번호가 남을 수 있습니다. 운영 환경에서는 Secrets Manager, SSM Parameter Store, Azure Key Vault, Kubernetes Secret 암호화, CI/CD secret 변수 등을 사용해야 합니다.
+> Git 이력, Terraform state, plan 로그 등에 비밀번호가 남을 수 있습니다. 이 레포에서는 하드코딩 값을 변수/환경변수 기반으로 정리했지만, 운영 환경에서는 Secrets Manager, SSM Parameter Store, Azure Key Vault, Kubernetes Secret 암호화, CI/CD secret 변수 등을 사용해야 합니다.
 
 ## 11. 자주 나올 꼬리 질문 모음
 
@@ -371,4 +371,3 @@ Pod는 컨테이너가 실행되는 최소 단위다. Deployment는 원하는 Po
 ## 13. 1분 답변 템플릿
 
 > 이 프로젝트는 AWS 기반 3-Tier 서비스를 Azure DR 환경으로 복구할 수 있게 설계한 멀티클라우드 인프라 프로젝트입니다. 평상시에는 Route 53, CloudFront, ALB, EKS, RDS MySQL로 서비스를 운영하고, 장애가 발생하면 CloudFront가 Azure Blob의 점검 페이지로 전환해 사용자에게 통제된 안내를 제공합니다. 이후 장기 장애로 판단되면 Terraform으로 Azure의 emergency 구성을 적용해 AKS, Application Gateway, Azure MySQL을 생성하고, 백업 DB를 복구해 전체 서비스를 재개하는 구조입니다. 핵심은 모든 복구를 즉시 자동화한 것이 아니라, 장애 직후 사용자 안내와 장기 장애 시 전체 복구를 분리해 비용과 운영 리스크를 조절했다는 점입니다.
-

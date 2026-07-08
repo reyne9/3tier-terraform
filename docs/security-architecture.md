@@ -1128,7 +1128,7 @@ resource "azurerm_application_gateway" "main" {
 # ✅ Database Credentials Secret 생성
 kubectl create secret generic db-credentials \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 
 # Secret 확인 (Base64 인코딩됨)
@@ -1139,7 +1139,7 @@ kubectl get secret db-credentials -n was -o yaml
 - ❌ **Base64 인코딩만**: 암호화 아님 (누구나 디코딩 가능)
   ```bash
   echo "YnllbXlibHVl" | base64 -d
-  # 출력: byemyblue
+  # 출력: CHANGE_ME_DB_PASSWORD
   ```
 - ❌ **etcd 평문 저장**: Kubernetes etcd에 평문 저장 (etcd 암호화 필요)
 - ❌ **Git 커밋 불가**: Secret을 Git에 올리면 노출
@@ -1164,7 +1164,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 
   secret_string = jsonencode({
     username = "admin"
-    password = "byemyblue"
+    password = "CHANGE_ME_DB_PASSWORD"
     host     = aws_db_instance.main.address
     port     = 3306
     dbname   = "petclinic"
@@ -1467,7 +1467,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
 # ✅ 올바른 방법: Kubernetes Secret
 kubectl create secret generic db-credentials \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 
 # ❌ 잘못된 방법: ConfigMap (평문 저장)

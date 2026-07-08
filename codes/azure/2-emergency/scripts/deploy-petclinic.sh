@@ -46,8 +46,11 @@ EOF
 
 echo ""
 echo "[3/7] MySQL Secret 생성 (was namespace)..."
-# Terraform tfvars에서 설정한 비밀번호 사용
-DB_PASSWORD="byemyeblue1!"
+if [ -z "${DB_PASSWORD:-}" ]; then
+  echo "Error: DB_PASSWORD 환경변수를 먼저 설정하세요."
+  echo "예: export DB_PASSWORD='<azure-mysql-password>'"
+  exit 1
+fi
 
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://${MYSQL_FQDN}:3306/petclinic?useSSL=true&requireSSL=false&serverTimezone=UTC" \

@@ -43,7 +43,11 @@ echo -e "${GREEN}✓ Namespaces 생성 완료${NC}"
 # Step 4: DB Secret 생성
 echo -e "\n${YELLOW}[4/7] Database Secret 생성...${NC}"
 MYSQL_FQDN=$(cd .. && terraform output -raw mysql_fqdn 2>/dev/null || echo "mysql-dr-blue.mysql.database.azure.com")
-DB_PASSWORD=$(cd .. && terraform output -json 2>/dev/null | jq -r '.db_password.value // "byemyblue1!"')
+if [ -z "${DB_PASSWORD:-}" ]; then
+    echo -e "${RED}Error: DB_PASSWORD 환경변수를 먼저 설정하세요.${NC}"
+    echo "예: export DB_PASSWORD='<azure-mysql-password>'"
+    exit 1
+fi
 
 echo "MySQL FQDN: $MYSQL_FQDN"
 

@@ -10,7 +10,7 @@
 set -e
 
 CLOUDFRONT_ID="E2OX3Z0XHNDUN"
-LAMBDA_ARN="arn:aws:lambda:us-east-1:822837196792:function:CloudFrontFailover:1"
+LAMBDA_ARN="arn:aws:lambda:us-east-1:ACCOUNT_ID:function:CloudFrontFailover:1"
 
 echo "========================================="
 echo "CloudFront Failback to AWS"
@@ -21,7 +21,7 @@ echo ""
 echo "[1/6] Checking AWS infrastructure status..."
 
 # EKS 컨텍스트로 전환
-kubectl config use-context arn:aws:eks:ap-northeast-2:822837196792:cluster/blue-eks > /dev/null 2>&1
+kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks > /dev/null 2>&1
 
 # Pod 상태 확인
 WAS_PODS=$(kubectl get pods -n was --no-headers 2>/dev/null | wc -l)
@@ -91,7 +91,7 @@ cat "$BACKUP_FILE" | jq '.DistributionConfig' | jq '
   "Quantity": 1,
   "Items": [
     {
-      "LambdaFunctionARN": "arn:aws:lambda:us-east-1:822837196792:function:CloudFrontFailover:1",
+      "LambdaFunctionARN": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:CloudFrontFailover:1",
       "EventType": "origin-response",
       "IncludeBody": false
     }

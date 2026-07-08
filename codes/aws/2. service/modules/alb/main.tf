@@ -107,7 +107,7 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type = var.enable_https ? "redirect" : "forward"
-    
+
     # HTTPS 리다이렉트 (도메인 있을 때)
     dynamic "redirect" {
       for_each = var.enable_https ? [1] : []
@@ -117,7 +117,7 @@ resource "aws_lb_listener" "http" {
         status_code = "HTTP_301"
       }
     }
-    
+
     # Target Group 포워딩 (도메인 없을 때)
     target_group_arn = var.enable_https ? null : aws_lb_target_group.web.arn
   }

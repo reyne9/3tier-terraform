@@ -82,10 +82,10 @@ resource "aws_subnet" "web" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name                              = "${var.environment}-web-${count.index + 1}"
-    Environment                       = var.environment
-    Type                              = "Private"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                           = "${var.environment}-web-${count.index + 1}"
+    Environment                                    = var.environment
+    Type                                           = "Private"
+    "kubernetes.io/role/internal-elb"              = "1"
     "kubernetes.io/cluster/${var.environment}-eks" = "shared"
   }
 
@@ -107,10 +107,10 @@ resource "aws_subnet" "was" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name                              = "${var.environment}-was-${count.index + 1}"
-    Environment                       = var.environment
-    Type                              = "Private"
-    "kubernetes.io/role/internal-elb" = "1"
+    Name                                           = "${var.environment}-was-${count.index + 1}"
+    Environment                                    = var.environment
+    Type                                           = "Private"
+    "kubernetes.io/role/internal-elb"              = "1"
     "kubernetes.io/cluster/${var.environment}-eks" = "shared"
   }
 

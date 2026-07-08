@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.14.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -19,7 +19,7 @@ terraform {
 # AWS 프로바이더 초기화
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Environment = var.environment
@@ -36,11 +36,11 @@ provider "aws" {
 
 module "vpc" {
   source = "./modules/vpc"
-  
+
   environment        = var.environment
   vpc_cidr           = var.aws_vpc_cidr
   availability_zones = var.aws_availability_zones
-  
+
   public_subnet_cidrs = var.public_subnet_cidrs
   web_subnet_cidrs    = var.web_subnet_cidrs
   was_subnet_cidrs    = var.was_subnet_cidrs
@@ -55,11 +55,11 @@ module "vpc" {
 module "eks" {
   source = "./modules/eks"
 
-  environment         = var.environment
-  vpc_id              = module.vpc.vpc_id
-  web_subnet_ids      = module.vpc.web_subnet_ids
-  was_subnet_ids      = module.vpc.was_subnet_ids
-  node_instance_type  = var.eks_node_instance_type
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  web_subnet_ids     = module.vpc.web_subnet_ids
+  was_subnet_ids     = module.vpc.was_subnet_ids
+  node_instance_type = var.eks_node_instance_type
 
   # Web Tier 노드 그룹 설정
   web_desired_size = var.eks_web_desired_size
@@ -83,26 +83,26 @@ module "eks" {
 module "rds" {
   source = "./modules/rds"
 
-  environment                = var.environment
-  vpc_id                     = module.vpc.vpc_id
-  subnet_ids                 = module.vpc.rds_subnet_ids
-  eks_security_group_id      = module.eks.cluster_security_group_id
+  environment           = var.environment
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = module.vpc.rds_subnet_ids
+  eks_security_group_id = module.eks.cluster_security_group_id
 
-  database_name              = var.db_name
-  master_username            = var.db_username
-  master_password            = "byemyblue"
+  database_name   = var.db_name
+  master_username = var.db_username
+  master_password = var.db_password
 
-  instance_class             = var.rds_instance_class
-  allocated_storage          = var.rds_allocated_storage
-  max_allocated_storage      = var.rds_max_allocated_storage
+  instance_class        = var.rds_instance_class
+  allocated_storage     = var.rds_allocated_storage
+  max_allocated_storage = var.rds_max_allocated_storage
 
-  multi_az                   = var.rds_multi_az
-  skip_final_snapshot        = var.rds_skip_final_snapshot
-  deletion_protection        = var.rds_deletion_protection
+  multi_az            = var.rds_multi_az
+  skip_final_snapshot = var.rds_skip_final_snapshot
+  deletion_protection = var.rds_deletion_protection
 
   # Enhanced Monitoring 활성화
   enhanced_monitoring_enabled = true
-  monitoring_interval         = 60  # 60초 간격으로 수집
+  monitoring_interval         = 60 # 60초 간격으로 수집
 }
 
 
@@ -115,7 +115,7 @@ data "aws_caller_identity" "current" {}
 
 # OIDC Provider for EKS (IAM Role 연동용)
 resource "aws_iam_openid_connect_provider" "eks" {
-  client_id_list  = ["sts.amazonaws.com"]
+  client_id_list = ["sts.amazonaws.com"]
   # EKS OIDC thumbprint (ap-northeast-2 리전의 고정값)
   thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
   url             = module.eks.oidc_provider_url
@@ -123,4 +123,4 @@ resource "aws_iam_openid_connect_provider" "eks" {
   tags = {
     Name = "${var.environment}-eks-oidc"
   }
-} 
+}

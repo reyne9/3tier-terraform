@@ -8,8 +8,8 @@
 variable "backup_schedule_cron" {
   description = "백업 주기 (Cron 형식). 기본값: 하루 1회 (0 3 * * *), 테스트용: 5분마다 (*/5 * * * *)"
   type        = string
-  default     = "*/5 * * * *" 
-  
+  default     = "*/5 * * * *"
+
   # 사용 예시:
   # - 하루 1회 (실제 운영): "0 3 * * *"
   # - 5분마다 (테스트): "*/5 * * * *"
@@ -165,7 +165,7 @@ resource "aws_key_pair" "backup_instance" {
 # 최신 Ubuntu 22.04 AMI 조회
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]  # Canonical
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -180,7 +180,7 @@ data "aws_ami" "ubuntu" {
 
 resource "aws_instance" "backup_instance" {
   ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.small"  # 2 vCPU, 2GB RAM
+  instance_type = "t3.small" # 2 vCPU, 2GB RAM
 
   # RDS와 동일한 AZ의 WAS 서브넷에 배치
   subnet_id                   = module.vpc.was_subnets_by_az[module.rds.db_availability_zone]
@@ -188,11 +188,11 @@ resource "aws_instance" "backup_instance" {
   vpc_security_group_ids      = [aws_security_group.backup_instance.id]
   iam_instance_profile        = aws_iam_instance_profile.backup_instance.name
   key_name                    = aws_key_pair.backup_instance.key_name
-  associate_public_ip_address = false  # Private 서브넷
+  associate_public_ip_address = false # Private 서브넷
 
   root_block_device {
     volume_type = "gp3"
-    volume_size = 30  # GB
+    volume_size = 30 # GB
     encrypted   = true
   }
 
@@ -283,7 +283,7 @@ resource "aws_cloudwatch_metric_alarm" "backup_instance_status" {
 
 output "backup_summary" {
   description = "백업 설정 요약"
-  value = <<-EOT
+  value       = <<-EOT
 
   ╔════════════════════════════════════════════════╗
   ║     Backup Instance (Plan B - Pilot Light)     ║

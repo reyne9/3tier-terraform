@@ -120,7 +120,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/3tier-terraform
+    repoURL: https://github.com/c1oud9/3tier-terraform
     targetRevision: main
     path: codes/aws/2. service/k8s-manifests/was
   destination:
@@ -667,7 +667,7 @@ jobs:
       - name: Checkout GitOps Repo
         uses: actions/checkout@v4
         with:
-          repository: your-org/3tier-terraform
+          repository: c1oud9/3tier-terraform
           token: ${{ secrets.GH_PAT }}
 
       - name: Update Kustomization

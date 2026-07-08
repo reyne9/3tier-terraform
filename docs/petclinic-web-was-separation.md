@@ -382,7 +382,7 @@ spring.application.name=petclinic
 # MySQL 데이터소스 설정 (환경변수 사용)
 spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/petclinic}
 spring.datasource.username=${DB_USERNAME:admin}
-spring.datasource.password=${DB_PASSWORD:byemyblue}
+spring.datasource.password=${DB_PASSWORD:CHANGE_ME_DB_PASSWORD}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # Hibernate 설정
@@ -666,7 +666,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: petclinic
       MYSQL_USER: admin
-      MYSQL_PASSWORD: byemyblue
+      MYSQL_PASSWORD: CHANGE_ME_DB_PASSWORD
     ports:
       - "3306:3306"
     volumes:
@@ -677,7 +677,7 @@ services:
     environment:
       DB_URL: jdbc:mysql://mysql:3306/petclinic
       DB_USERNAME: admin
-      DB_PASSWORD: byemyblue
+      DB_PASSWORD: CHANGE_ME_DB_PASSWORD
     depends_on:
       - mysql
     ports:
@@ -979,7 +979,7 @@ kubectl create namespace was
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://blue-rds.xxxx.ap-northeast-2.rds.amazonaws.com:3306/petclinic" \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 ```
 
@@ -988,7 +988,7 @@ kubectl create secret generic db-credentials \
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://mysql-dr-blue.mysql.database.azure.com:3306/petclinic" \
   --from-literal=username="mysqladmin" \
-  --from-literal=password="byemyblue1!" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 ```
 

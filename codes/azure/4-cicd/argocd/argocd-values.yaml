@@ -138,7 +138,7 @@ configs:
     url: https://argocd.bloberry.cloud
 
     repositories: |
-      - url: https://github.com/your-org/pocketbank-gitops.git
+      - url: https://github.com/c1oud9/petclinic-gitops.git
         passwordSecret:
           name: github-secret
           key: password

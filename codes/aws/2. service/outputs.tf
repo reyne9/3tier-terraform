@@ -146,7 +146,7 @@ output "backup_logs_command" {
 
 output "deployment_summary" {
   description = "배포 요약 정보"
-  value = <<-EOT
+  value       = <<-EOT
   
   ╔════════════════════════════════════════════════╗
   ║           AWS Primary Site (Plan B)            ║
@@ -249,13 +249,13 @@ output "deployment_summary" {
 output "quick_commands" {
   description = "자주 사용하는 명령어"
   value = {
-    kubectl_setup    = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
-    backup_ssh       = "aws ssm start-session --target ${aws_instance.backup_instance.id}"
-    backup_logs      = "sudo tail -f /var/log/mysql-backup-to-azure.log"
-    rds_connection   = "mysql -h ${module.rds.db_instance_address} -u ${var.db_username} -p"
-    check_nodes      = "kubectl get nodes"
-    check_pods       = "kubectl get pods -A"
-    check_ingress    = "kubectl get ingress -A"
+    kubectl_setup  = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+    backup_ssh     = "aws ssm start-session --target ${aws_instance.backup_instance.id}"
+    backup_logs    = "sudo tail -f /var/log/mysql-backup-to-azure.log"
+    rds_connection = "mysql -h ${module.rds.db_instance_address} -u ${var.db_username} -p"
+    check_nodes    = "kubectl get nodes"
+    check_pods     = "kubectl get pods -A"
+    check_ingress  = "kubectl get ingress -A"
   }
 }
 

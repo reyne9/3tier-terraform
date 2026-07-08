@@ -77,27 +77,27 @@ output "alarm_arns" {
     node_count_low           = aws_cloudwatch_metric_alarm.node_count_low.arn
 
     # Pod Level
-    pod_cpu_high             = aws_cloudwatch_metric_alarm.pod_cpu_high.arn
-    pod_memory_high          = aws_cloudwatch_metric_alarm.pod_memory_high.arn
-    pod_restart_high         = aws_cloudwatch_metric_alarm.pod_restart_high.arn
-    pod_network_rx_high      = aws_cloudwatch_metric_alarm.pod_network_rx_high.arn
-    pod_network_tx_high      = aws_cloudwatch_metric_alarm.pod_network_tx_high.arn
+    pod_cpu_high        = aws_cloudwatch_metric_alarm.pod_cpu_high.arn
+    pod_memory_high     = aws_cloudwatch_metric_alarm.pod_memory_high.arn
+    pod_restart_high    = aws_cloudwatch_metric_alarm.pod_restart_high.arn
+    pod_network_rx_high = aws_cloudwatch_metric_alarm.pod_network_rx_high.arn
+    pod_network_tx_high = aws_cloudwatch_metric_alarm.pod_network_tx_high.arn
 
     # Container Level
-    container_cpu_high       = aws_cloudwatch_metric_alarm.container_cpu_high.arn
-    container_memory_high    = aws_cloudwatch_metric_alarm.container_memory_high.arn
-    service_count_low        = aws_cloudwatch_metric_alarm.service_count_low.arn
+    container_cpu_high    = aws_cloudwatch_metric_alarm.container_cpu_high.arn
+    container_memory_high = aws_cloudwatch_metric_alarm.container_memory_high.arn
+    service_count_low     = aws_cloudwatch_metric_alarm.service_count_low.arn
 
     # ALB
-    alb_surge_queue          = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_surge_queue[0].arn : null
-    alb_5xx_errors           = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_5xx_errors[0].arn : null
-    alb_latency_high         = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_latency_high[0].arn : null
+    alb_surge_queue  = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_surge_queue[0].arn : null
+    alb_5xx_errors   = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_5xx_errors[0].arn : null
+    alb_latency_high = var.alb_name != "" ? aws_cloudwatch_metric_alarm.alb_latency_high[0].arn : null
 
     # RDS
-    rds_storage_low          = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_storage_low[0].arn : null
-    rds_connections_high     = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_connections_high[0].arn : null
-    rds_disk_queue_high      = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_disk_queue_high[0].arn : null
-    rds_cpu_high             = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_cpu_high[0].arn : null
+    rds_storage_low      = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_storage_low[0].arn : null
+    rds_connections_high = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_connections_high[0].arn : null
+    rds_disk_queue_high  = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_disk_queue_high[0].arn : null
+    rds_cpu_high         = var.rds_instance_identifier != "" ? aws_cloudwatch_metric_alarm.rds_cpu_high[0].arn : null
 
     # Route53 Health Check
     route53_primary_health   = var.enable_route53_monitoring && var.primary_health_check_id != "" ? aws_cloudwatch_metric_alarm.route53_primary_health[0].arn : null

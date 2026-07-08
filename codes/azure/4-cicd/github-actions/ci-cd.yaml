@@ -20,7 +20,7 @@ env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   RESOURCE_GROUP: bloberry-rg
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_REPOSITORY: pocketbank
+  DOCKERHUB_REPOSITORY: petclinic
   AKS_CLUSTER_NAME: bloberry-aks
 
 jobs:
@@ -109,7 +109,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=pocketbank-azure \
+            -Dsonar.projectKey=petclinic-azure \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.token=${{ secrets.SONAR_TOKEN }}
 
@@ -130,7 +130,7 @@ jobs:
       - name: Run OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
-          project: 'pocketbank-azure'
+          project: 'petclinic-azure'
           path: '.'
           format: 'SARIF'
 
@@ -212,7 +212,7 @@ jobs:
       - name: Checkout GitOps repository
         uses: actions/checkout@v4
         with:
-          repository: your-org/pocketbank-gitops
+          repository: c1oud9/petclinic-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
 
@@ -224,7 +224,7 @@ jobs:
           IMAGE_TAG: ${{ needs.build.outputs.version }}
         run: |
           cd gitops/overlays/azure-prod
-          kustomize edit set image pocketbank=${{ needs.docker.outputs.image-uri }}
+          kustomize edit set image petclinic=${{ needs.docker.outputs.image-uri }}
 
       - name: Commit and push changes
         env:
@@ -274,12 +274,12 @@ jobs:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER_AZURE }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN_AZURE }}
         run: |
-          argocd app sync pocketbank-azure \
+          argocd app sync petclinic-azure \
             --server $ARGOCD_SERVER \
             --auth-token $ARGOCD_AUTH_TOKEN \
             --grpc-web
 
-          argocd app wait pocketbank-azure \
+          argocd app wait petclinic-azure \
             --server $ARGOCD_SERVER \
             --auth-token $ARGOCD_AUTH_TOKEN \
             --grpc-web \
@@ -309,12 +309,12 @@ jobs:
 
       - name: Verify deployment status
         run: |
-          kubectl rollout status deployment/pocketbank -n pocketbank --timeout=300s
+          kubectl rollout status deployment/petclinic -n petclinic --timeout=300s
 
       - name: Run smoke tests
         run: |
           # Get service endpoint (Azure uses IP, not hostname)
-          ENDPOINT=$(kubectl get svc pocketbank -n pocketbank -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          ENDPOINT=$(kubectl get svc petclinic -n petclinic -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
           # Wait for endpoint to be available
           for i in {1..30}; do
@@ -385,7 +385,7 @@ jobs:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER_AZURE }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN_AZURE }}
         run: |
-          argocd app rollback pocketbank-azure \
+          argocd app rollback petclinic-azure \
             --server $ARGOCD_SERVER \
             --auth-token $ARGOCD_AUTH_TOKEN \
             --grpc-web

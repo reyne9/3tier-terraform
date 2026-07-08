@@ -183,13 +183,13 @@ variable "rds_disk_queue_threshold" {
 variable "rds_latency_threshold" {
   description = "RDS Read/Write Latency 임계값 (초)"
   type        = number
-  default     = 0.1  # 100ms
+  default     = 0.1 # 100ms
 }
 
 variable "rds_freeable_memory_threshold" {
   description = "RDS Freeable Memory 임계값 (bytes)"
   type        = number
-  default     = 268435456  # 256MB
+  default     = 268435456 # 256MB
 }
 
 # =================================================
@@ -245,13 +245,13 @@ variable "container_memory_threshold" {
 variable "pod_network_rx_threshold" {
   description = "Pod 네트워크 수신 임계값 (bytes/sec)"
   type        = number
-  default     = 100000000  # 100MB/s
+  default     = 100000000 # 100MB/s
 }
 
 variable "pod_network_tx_threshold" {
   description = "Pod 네트워크 송신 임계값 (bytes/sec)"
   type        = number
-  default     = 100000000  # 100MB/s
+  default     = 100000000 # 100MB/s
 }
 
 variable "service_count_threshold" {

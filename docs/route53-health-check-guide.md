@@ -227,7 +227,7 @@ aws cloudwatch set-alarm-state \
 
 ```bash
 # AWS EKS Web Pod 중지 (CloudFront 페일오버 트리거)
-kubectl config use-context arn:aws:eks:ap-northeast-2:822837196792:cluster/blue-eks
+kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks
 kubectl scale deployment web-nginx -n web --replicas=0
 
 # 헬스체크 상태 모니터링 (1-2분 후 실패 예상)
@@ -313,7 +313,7 @@ echo "https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-no
 ```bash
 # SNS 구독 확인
 aws sns list-subscriptions-by-topic \
-  --topic-arn arn:aws:sns:ap-northeast-2:822837196792:blue-eks-monitoring-alerts
+  --topic-arn arn:aws:sns:ap-northeast-2:ACCOUNT_ID:blue-eks-monitoring-alerts
 ```
 
 ### 대시보드에 데이터가 없는 경우

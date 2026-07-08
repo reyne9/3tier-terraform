@@ -152,7 +152,7 @@ configs:
 
     # Repository 설정
     repositories: |
-      - url: https://github.com/your-org/pocketbank-gitops.git
+      - url: https://github.com/c1oud9/petclinic-gitops.git
         passwordSecret:
           name: github-secret
           key: password
@@ -170,7 +170,7 @@ configs:
             clientID: $dex-github-client-id
             clientSecret: $dex-github-client-secret
             orgs:
-              - name: your-org
+              - name: c1oud9
 
     # Resource 추적 방법
     resource.customizations: |
@@ -191,8 +191,8 @@ configs:
       p, role:org-admin, repositories, *, *, allow
       p, role:org-admin, logs, get, *, allow
       p, role:org-admin, exec, create, */*, allow
-      g, your-org:devops-team, role:org-admin
-      g, your-org:developers, role:readonly
+      g, c1oud9:devops-team, role:org-admin
+      g, c1oud9:developers, role:readonly
 
   # Secret 설정
   secret:

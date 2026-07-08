@@ -74,14 +74,14 @@ resource "azurerm_cdn_frontdoor_origin" "azure_appgw" {
   name                          = "azure-aks-appgw"
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
 
-  enabled                        = false  # Enable manually when needed
+  enabled                        = false # Enable manually when needed
   host_name                      = var.azure_appgw_ip
   http_port                      = 80
   https_port                     = 443
   origin_host_header             = var.azure_appgw_ip
   priority                       = 2
   weight                         = 1000
-  certificate_name_check_enabled = false  # IP address doesn't have cert
+  certificate_name_check_enabled = false # IP address doesn't have cert
 }
 
 # Route: Default route for all traffic
@@ -89,7 +89,7 @@ resource "azurerm_cdn_frontdoor_route" "default" {
   name                          = "default-route"
   cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
-  cdn_frontdoor_origin_ids      = concat(
+  cdn_frontdoor_origin_ids = concat(
     [azurerm_cdn_frontdoor_origin.aws_alb.id],
     [azurerm_cdn_frontdoor_origin.azure_blob.id],
     var.azure_appgw_ip != "" ? [azurerm_cdn_frontdoor_origin.azure_appgw[0].id] : []

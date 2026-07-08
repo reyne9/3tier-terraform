@@ -139,9 +139,9 @@ kubectl delete secret db-credentials -n was
 export RDS_HOST=$(cd ~/3tier-terraform/codes/aws/service && terraform output -raw rds_address)
 
 kubectl create secret generic db-credentials \
-  --from-literal=url="jdbc:mysql://${RDS_HOST}:3306/pocketbank" \
+  --from-literal=url="jdbc:mysql://${RDS_HOST}:3306/petclinic" \
   --from-literal=username="admin" \
-  --from-literal=password="MySecurePassword123!" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 
 # 4. Deployment 재시작
@@ -314,7 +314,7 @@ aws ssm start-session --target i-0155f8568e2ed335d
 # RDS 정보 수동 설정
 export RDS_HOST="blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com"
 export DB_USERNAME="admin"
-export DB_PASSWORD="byemyblue"
+export DB_PASSWORD="CHANGE_ME_DB_PASSWORD"
 
 echo "RDS Host: $RDS_HOST"
 echo "DB Username: $DB_USERNAME"
@@ -330,12 +330,12 @@ mysql -h "$RDS_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT 1;"
 **방법 2: 비밀번호 프롬프트 사용**
 ```bash
 mysql -h "$RDS_HOST" -u "$DB_USERNAME" -p
-# Enter password: byemyblue
+# Enter password: CHANGE_ME_DB_PASSWORD
 ```
 
 **방법 3: 변수 없이 직접 입력**
 ```bash
-mysql -h blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com -u admin -pbyemyblue -e "SELECT 1;"
+mysql -h blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com -u admin -pCHANGE_ME_DB_PASSWORD -e "SELECT 1;"
 ```
 
 **방법 4: 설정 파일 사용**
@@ -345,7 +345,7 @@ cat > ~/.my.cnf <<EOF
 [client]
 host=blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com
 user=admin
-password=byemyblue
+password=CHANGE_ME_DB_PASSWORD
 EOF
 
 chmod 600 ~/.my.cnf
@@ -360,8 +360,8 @@ mysql -e "SELECT 1;"
 # 데이터베이스 목록
 mysql -h "$RDS_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SHOW DATABASES;"
 
-# pocketbank 데이터베이스 확인
-mysql -h "$RDS_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "USE pocketbank; SHOW TABLES;"
+# petclinic 데이터베이스 확인
+mysql -h "$RDS_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "USE petclinic; SHOW TABLES;"
 ```
 
 ##### 4단계: 백업 스크립트 생성 (연결 성공 후)
@@ -415,9 +415,9 @@ echo "=========================================="
 
 # 환경 변수
 RDS_HOST="blue-rds.ciyiccb2k2z8.ap-northeast-2.rds.amazonaws.com"
-DB_NAME="pocketbank"
+DB_NAME="petclinic"
 DB_USERNAME="admin"
-DB_PASSWORD="byemyblue"
+DB_PASSWORD="CHANGE_ME_DB_PASSWORD"
 AZURE_STORAGE_ACCOUNT="bloberry01"
 AZURE_STORAGE_KEY="AZURE_KEY_HERE"
 AZURE_CONTAINER="mysql-backups"
@@ -963,7 +963,7 @@ kubectl logs -n was -l app=was-spring --tail=100
 # 에러 패턴 확인
 # "Access denied for user 'admin'@'xxx'" -> 비밀번호 문제
 # "Communications link failure" -> 네트워크 문제
-# "Unknown database 'pocketbank'" -> 데이터베이스 없음
+# "Unknown database 'petclinic'" -> 데이터베이스 없음
 ```
 
 **2단계: Secret 확인 및 재생성**
@@ -982,9 +982,9 @@ echo "RDS Host: $RDS_HOST"
 
 # Secret 재생성
 kubectl create secret generic db-credentials \
-  --from-literal=url="jdbc:mysql://${RDS_HOST}:3306/pocketbank" \
+  --from-literal=url="jdbc:mysql://${RDS_HOST}:3306/petclinic" \
   --from-literal=username="admin" \
-  --from-literal=password="byemyblue" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 
 # Deployment 재시작
@@ -1244,7 +1244,7 @@ resource "aws_route53_health_check" "primary" {
   request_interval  = 30
   failure_threshold = 3
   measure_latency   = false
-  search_string     = "PocketBank"
+  search_string     = "PetClinic"
 }
 
 # Primary Health Check (올바른 설정)
@@ -1382,7 +1382,7 @@ aws ec2 describe-security-groups --group-ids $RDS_SG
 aws ssm start-session --target $(cd ~/3tier-terraform/PlanB/aws && terraform output -raw backup_instance_id)
 
 # MySQL 연결 테스트
-mysql -h $RDS_HOST -u admin -pbyemyblue -e "SELECT 1;"
+mysql -h $RDS_HOST -u admin -pCHANGE_ME_DB_PASSWORD -e "SELECT 1;"
 ```
 
 ---
@@ -1416,8 +1416,8 @@ Access denied for user 'admin'@'%' (using password: YES) (1045)
 ```bash
 # 올바른 옵션 조합
 mysqldump -h $RDS_HOST \
-  -u admin -pbyemyblue \
-  --databases pocketbank \
+  -u admin -pCHANGE_ME_DB_PASSWORD \
+  --databases petclinic \
   --single-transaction \
   --set-gtid-purged=OFF \
   --routines \
@@ -1502,7 +1502,7 @@ RDS 사용자 권한 확인:
 
 ```bash
 # 백업 인스턴스에서 실행
-mysql -h $RDS_HOST -u admin -pbyemyblue -e "SHOW GRANTS FOR 'admin'@'%';"
+mysql -h $RDS_HOST -u admin -pCHANGE_ME_DB_PASSWORD -e "SHOW GRANTS FOR 'admin'@'%';"
 ```
 
 필요한 권한:
@@ -1783,13 +1783,13 @@ terraform apply
 
 ---
 
-### 8.5 AKS PocketBank Pod CrashLoopBackOff (MySQL 연결 실패)
+### 8.5 AKS PetClinic Pod CrashLoopBackOff (MySQL 연결 실패)
 
 #### 증상
 ```bash
-kubectl get pods -n pocketbank
+kubectl get pods -n petclinic
 # NAME                         READY   STATUS             RESTARTS
-# pocketbank-5974c78cd-c7dvf   0/1     CrashLoopBackOff   38
+# petclinic-5974c78cd-c7dvf   0/1     CrashLoopBackOff   38
 ```
 
 #### 원인
@@ -1800,7 +1800,7 @@ kubectl get pods -n pocketbank
 
 **1단계: Pod 로그 확인**
 ```bash
-kubectl logs pocketbank-5974c78cd-c7dvf -n pocketbank --tail=50
+kubectl logs petclinic-5974c78cd-c7dvf -n petclinic --tail=50
 
 # 오류 확인:
 # Caused by: com.mysql.cj.exceptions.CJCommunicationsException:
@@ -1838,21 +1838,21 @@ az mysql flexible-server firewall-rule create \
   --end-ip-address 20.249.162.115
 ```
 
-**4단계: PocketBank 재시작**
+**4단계: PetClinic 재시작**
 ```bash
-kubectl rollout restart deployment pocketbank -n pocketbank
+kubectl rollout restart deployment petclinic -n petclinic
 
 # Pod 상태 확인
-kubectl get pods -n pocketbank -w
+kubectl get pods -n petclinic -w
 ```
 
 **5단계: 연결 확인**
 ```bash
 # Pod 로그에서 성공 메시지 확인
-kubectl logs -f deployment/pocketbank -n pocketbank | grep "Started"
+kubectl logs -f deployment/petclinic -n petclinic | grep "Started"
 
 # 출력 예시:
-# Started PocketBankApplication in 16.159 seconds
+# Started PetClinicApplication in 16.159 seconds
 ```
 
 ---
@@ -2057,14 +2057,14 @@ backend_address_pool {
 
 ```hcl
 # AKS Service 정보를 data source로 가져오기
-data "kubernetes_service" "pocketbank" {
+data "kubernetes_service" "petclinic" {
   metadata {
-    name      = "pocketbank"
-    namespace = "pocketbank"
+    name      = "petclinic"
+    namespace = "petclinic"
   }
 
   depends_on = [
-    kubernetes_service.pocketbank
+    kubernetes_service.petclinic
   ]
 }
 
@@ -2075,7 +2075,7 @@ resource "azurerm_application_gateway" "main" {
   backend_address_pool {
     name         = local.backend_address_pool_name
     ip_addresses = [
-      data.kubernetes_service.pocketbank.status[0].load_balancer[0].ingress[0].ip
+      data.kubernetes_service.petclinic.status[0].load_balancer[0].ingress[0].ip
     ]
   }
 }
@@ -2088,7 +2088,7 @@ resource "azurerm_application_gateway" "main" {
 # update-appgw-backend.sh
 
 # AKS LoadBalancer IP 조회
-AKS_LB_IP=$(kubectl get svc pocketbank -n pocketbank -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+AKS_LB_IP=$(kubectl get svc petclinic -n petclinic -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 # Application Gateway Backend Pool 업데이트
 az network application-gateway address-pool update \
@@ -2105,12 +2105,12 @@ echo "Backend updated to: $AKS_LB_IP"
 ```hcl
 resource "null_resource" "update_appgw_backend" {
   triggers = {
-    pocketbank_service = kubernetes_service.pocketbank.id
+    petclinic_service = kubernetes_service.petclinic.id
   }
 
   provisioner "local-exec" {
     command = <<-EOT
-      LB_IP=$(kubectl get svc pocketbank -n pocketbank -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+      LB_IP=$(kubectl get svc petclinic -n petclinic -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
       az network application-gateway address-pool update \
         -g rg-dr-blue \
         --gateway-name appgw-blue \
@@ -2120,7 +2120,7 @@ resource "null_resource" "update_appgw_backend" {
   }
 
   depends_on = [
-    kubernetes_service.pocketbank,
+    kubernetes_service.petclinic,
     azurerm_application_gateway.main
   ]
 }
@@ -2427,13 +2427,13 @@ desiredSize: 2
 #### 작업 내용
 - ECR/ACR에서 DockerHub로 컨테이너 레지스트리 마이그레이션
 - DockerHub 계정: cloud039
-- 레포지토리: pocketbank-web, pocketbank-was
+- 레포지토리: petclinic-web, petclinic-was
 
 #### Docker 권한 문제
 
 **증상**
 ```bash
-docker build -t cloud039/pocketbank-web:latest .
+docker build -t cloud039/petclinic-web:latest .
 # permission denied while trying to connect to the Docker daemon socket
 ```
 
@@ -2520,7 +2520,7 @@ kubectl logs was-spring-xxx -n was
 
 #### 원인 1: 잘못된 비밀번호
 
-Secret에 잘못된 비밀번호(`pocketbank123!`) 사용, 실제 비밀번호는 `byemyblue`
+Secret에 임시값 또는 이전 환경의 비밀번호를 넣으면 RDS 인증이 실패합니다. 실제 운영 비밀번호는 환경변수나 Secret Manager에서 가져와 주입해야 합니다.
 
 **해결방법**
 ```bash
@@ -2531,9 +2531,9 @@ kubectl get secret db-credentials -n was -o yaml
 kubectl delete secret db-credentials -n was
 
 kubectl create secret generic db-credentials \
-  --from-literal=url=jdbc:mysql://RDS_HOST:3306/pocketbank \
+  --from-literal=url=jdbc:mysql://RDS_HOST:3306/petclinic \
   --from-literal=username=admin \
-  --from-literal=password=byemyblue \
+  --from-literal=password="${DB_PASSWORD}" \
   -n was
 ```
 
@@ -2620,11 +2620,11 @@ volumeMounts:
 
 #### 증상
 ```
-nginx: [emerg] host not found in upstream "pocketbank-was"
+nginx: [emerg] host not found in upstream "petclinic-was"
 ```
 
 #### 원인
-Docker 이미지의 nginx.conf가 `pocketbank-was`를 참조하지만 실제 서비스 이름은 `was-service.was.svc.cluster.local`
+Docker 이미지의 nginx.conf가 `petclinic-was`를 참조하지만 실제 서비스 이름은 `was-service.was.svc.cluster.local`
 
 #### 해결방법
 
@@ -2632,7 +2632,7 @@ Docker 이미지의 nginx.conf가 `pocketbank-was`를 참조하지만 실제 서
 ```nginx
 # 수정 전
 location /api/ {
-  proxy_pass http://pocketbank-was:8080/api/;
+  proxy_pass http://petclinic-was:8080/api/;
 }
 
 # 수정 후
@@ -2643,9 +2643,9 @@ location /api/ {
 
 **Docker 이미지 재빌드**
 ```bash
-cd ~/spring-pocketbank/web
-docker build -t cloud039/pocketbank-web:latest .
-docker push cloud039/pocketbank-web:latest
+cd ~/spring-petclinic/web
+docker build -t cloud039/petclinic-web:latest .
+docker push cloud039/petclinic-web:latest
 
 # Deployment 재시작
 kubectl rollout restart deployment web-nginx -n web
@@ -2810,7 +2810,7 @@ kubectl delete secret db-credentials -n was
 kubectl create secret generic db-credentials \
   --from-literal=url="jdbc:mysql://mysql-dr-blue.mysql.database.azure.com:3306/petclinic" \
   --from-literal=username="mysqladmin" \
-  --from-literal=password="byemyblue1!" \
+  --from-literal=password="CHANGE_ME_DB_PASSWORD" \
   --namespace=was
 
 # 확인

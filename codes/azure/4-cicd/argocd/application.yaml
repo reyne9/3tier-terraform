@@ -1,21 +1,21 @@
-# ArgoCD Application for Azure AKS PocketBank
+# ArgoCD Application for Azure AKS PetClinic
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: pocketbank
+  name: petclinic
   namespace: argocd
 spec:
-  description: "PocketBank Application Project for Azure"
+  description: "PetClinic Application Project for Azure"
 
   sourceRepos:
-    - 'https://github.com/your-org/pocketbank-gitops.git'
-    - 'https://github.com/your-org/spring-pocketbank.git'
+    - 'https://github.com/c1oud9/petclinic-gitops.git'
+    - 'https://github.com/c1oud9/spring-petclinic.git'
 
   destinations:
-    - namespace: pocketbank
+    - namespace: petclinic
       server: https://kubernetes.default.svc
-    - namespace: pocketbank-staging
+    - namespace: petclinic-staging
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
@@ -36,14 +36,14 @@ spec:
   roles:
     - name: developer
       policies:
-        - p, proj:pocketbank:developer, applications, get, pocketbank/*, allow
-        - p, proj:pocketbank:developer, applications, sync, pocketbank/*, allow
+        - p, proj:petclinic:developer, applications, get, petclinic/*, allow
+        - p, proj:petclinic:developer, applications, sync, petclinic/*, allow
       groups:
         - Developers
 
     - name: admin
       policies:
-        - p, proj:pocketbank:admin, applications, *, pocketbank/*, allow
+        - p, proj:petclinic:admin, applications, *, petclinic/*, allow
       groups:
         - DevOps-Team
 
@@ -51,10 +51,10 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pocketbank-azure
+  name: petclinic-azure
   namespace: argocd
   labels:
-    app: pocketbank
+    app: petclinic
     environment: production
     cloud: azure
   annotations:
@@ -64,21 +64,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: pocketbank
+  project: petclinic
 
   source:
-    repoURL: https://github.com/your-org/pocketbank-gitops.git
+    repoURL: https://github.com/c1oud9/petclinic-gitops.git
     targetRevision: main
     path: overlays/azure-prod
 
     kustomize:
       images:
-        - cloud039/pocketbank-web:latest
-        - cloud039/pocketbank-was:latest
+        - cloud039/petclinic-web:latest
+        - cloud039/petclinic-was:latest
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: pocketbank
+    namespace: petclinic
 
   syncPolicy:
     automated:
@@ -113,7 +113,7 @@ spec:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: pocketbank
+namespace: petclinic
 
 resources:
   - ../../base
@@ -123,11 +123,11 @@ commonLabels:
   cloud: azure
 
 images:
-  - name: pocketbank-web
-    newName: cloud039/pocketbank-web
+  - name: petclinic-web
+    newName: cloud039/petclinic-web
     newTag: latest
-  - name: pocketbank-was
-    newName: cloud039/pocketbank-was
+  - name: petclinic-was
+    newName: cloud039/petclinic-was
     newTag: latest
 
 patches:
@@ -135,19 +135,19 @@ patches:
   - path: patches/ingress-azure-patch.yaml
 
 configMapGenerator:
-  - name: pocketbank-config
+  - name: petclinic-config
     behavior: merge
     literals:
       - spring.profiles.active=prod,mysql
 
 secretGenerator:
-  - name: pocketbank-db-secret
+  - name: petclinic-db-secret
     type: Opaque
     literals:
-      - url=jdbc:mysql://bloberry-mysql.mysql.database.azure.com:3306/pocketbank?useSSL=true
+      - url=jdbc:mysql://bloberry-mysql.mysql.database.azure.com:3306/petclinic?useSSL=true
 
 replicas:
-  - name: pocketbank
+  - name: petclinic
     count: 3
 
 ---
@@ -155,7 +155,7 @@ replicas:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pocketbank
+  name: petclinic
   annotations:
     kubernetes.io/ingress.class: azure/application-gateway
     appgw.ingress.kubernetes.io/ssl-redirect: "true"
@@ -166,16 +166,16 @@ metadata:
 spec:
   tls:
     - hosts:
-        - pocketbank.bloberry.cloud
-      secretName: pocketbank-tls
+        - petclinic.example.com
+      secretName: petclinic-tls
   rules:
-    - host: pocketbank.bloberry.cloud
+    - host: petclinic.example.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: pocketbank
+                name: petclinic
                 port:
                   number: 80

@@ -279,14 +279,10 @@ ingressClassName: alb
 
 > RDS는 private subnet에 두고 public access를 막았습니다. 보안 그룹은 EKS 쪽에서 오는 3306만 허용하도록 구성했습니다. Multi-AZ, 백업 보존, Enhanced Monitoring, slow query log export를 통해 운영 DB 가용성과 관측성을 확보하려 했습니다.
 
-주의할 점:
+개선한 점:
 
-- `master_password = "byemyblue"`처럼 하드코딩된 비밀번호가 있다.
-- 면접에서 먼저 자랑할 내용은 아니고, 질문이 나오면 개선점으로 인정하는 것이 좋다.
-
-방어 답변:
-
-> 학습 프로젝트라 일부 민감값이 코드에 남은 부분이 있습니다. 운영 환경에서는 Secrets Manager, SSM Parameter Store, CI/CD secret, Terraform sensitive variable과 remote state 암호화를 적용해야 합니다.
+- RDS master password는 하드코딩하지 않고 `var.db_password` sensitive 변수로 주입하도록 정리했다.
+- 실제 운영 환경에서는 여기에 Secrets Manager, SSM Parameter Store, CI/CD secret, Terraform remote state 암호화까지 함께 적용하는 것이 좋다.
 
 ## 8. Azure 1-always
 
