@@ -19,7 +19,9 @@
 
 ### 전체 구조
 
+포트폴리오용 최신 아키텍처 다이어그램은 [docs/interview-prep/architecture-slides](docs/interview-prep/architecture-slides)에서 확인할 수 있습니다.
 
+![Multi-Cloud DR Overview](docs/interview-prep/architecture-slides/01-overview-flow.png)
 
 
 ### 기술 스택
@@ -66,6 +68,7 @@
 │       └── 2-emergency/      # 재해 복구 리소스 (MySQL, AKS, App Gateway)
 ├── docs/
 │   ├── PORTFOLIO_REPORT.md       # 전체 프로젝트 포트폴리오 보고서
+│   ├── interview-prep/            # 면접 복습 자료 및 최신 아키텍처 다이어그램
 │   ├── deployment-guide.md       # 배포 가이드
 │   ├── troubleshooting.md        # 트러블슈팅
 │   ├── dr-failover-procedure.md  # DR 절차서
@@ -85,6 +88,7 @@
 | `codes/aws/4-cicd/` | GitHub Actions, Keptn 기반 CI/CD 파이프라인 | [README.md](codes/aws/4-cicd/README.md) |
 | `codes/azure/1-always/` | 상시 대기 (~$5/월): VNet, Storage, 점검 페이지 | [README.md](codes/azure/1-always/README.md) |
 | `codes/azure/2-emergency/` | 긴급 복구 시 배포: MySQL, AKS, Application Gateway, PetClinic 매니페스트 | [README.md](codes/azure/2-emergency/README.md) |
+| `docs/interview-prep/` | 면접 대비 복습 자료, 실제 구현 상세, Q&A 카드, 포트폴리오 다이어그램 | [README.md](docs/interview-prep/README.md) |
 
 ---
 
