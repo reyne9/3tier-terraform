@@ -26,7 +26,7 @@ CloudFront Origin Failover는 GET, HEAD, OPTIONS 요청에만 secondary failover
 
 ## 장애 시뮬레이션 사례를 어떻게 설명하나요?
 
-프로젝트 초반에는 Terraform과 클라우드 콘솔의 직관적인 인터페이스, 그리고 AI의 도움으로 인프라를 비교적 수월하게 구축할 수 있었습니다. 그러나 장애 시뮬레이션에서는 GET 화면이 Azure Origin으로 전환되는 것만 확인하고 전체 DR이 성공했다고 판단한 문제가 있었습니다. 쓰기 요청을 별도로 테스트하자 실패했고, CloudFront Origin Failover는 GET, HEAD, OPTIONS 요청에만 Secondary Origin 장애 조치를 수행하며 POST, PUT, PATCH, DELETE 요청은 장애 조치하지 않는다는 점을 확인했습니다. 이에 자동 전환 범위를 입력 기능이 없는 HTTPS 점검 페이지로 제한하고, 전체 서비스 복구는 관리자 승인 후 `2-emergency` 배포, 최신 dump 복원, AKS와 Application Gateway의 읽기·쓰기 검증을 거쳐 CloudFront를 Front Door 직접 Origin으로 수동 전환하도록 재설계했습니다.
+프로젝트 초반에는 Terraform과 클라우드 콘솔의 직관적인 인터페이스, 그리고 AI의 도움으로 인프라를 비교적 수월하게 구축할 수 있었습니다. 그러나 실제 장애 시뮬레이션 단계에서 예상하지 못한 문제를 마주했습니다. AWS 장애 후 CloudFront가 Azure Front Door의 HTTPS 점검 페이지로 자동 전환되는 것을 확인했습니다. 이후 관리자 회의를 거쳐 Azure `2-emergency`를 수동 배포하고, 최신 dump를 Azure MySQL에 복원한 뒤 Front Door backend를 Application Gateway와 AKS 서비스로 전환했습니다. GET 요청으로 Azure 서비스 화면이 정상 실행되는 것을 확인한 뒤 처음에는 DR이 성공했다고 판단했습니다. 하지만 실제 서비스에서 정보를 입력해 POST 요청을 보내자 오류가 발생했습니다. 원인을 분석한 결과, CloudFront Origin Failover는 GET, HEAD, OPTIONS 요청에만 Secondary Origin 장애 조치를 수행하며 POST, PUT, PATCH, DELETE와 같은 쓰기 요청은 장애 조치하지 않는다는 점을 확인했습니다. AWS는 쓰기 요청을 자동으로 다른 Origin으로 전달할 경우 동일한 요청이 중복 처리되거나 데이터 일관성이 훼손될 수 있어 읽기 요청에 대해서만 장애 조치를 지원하도록 설계되어 있었습니다.
 
 ## Front Door를 왜 평상시에도 유지하나요?
 
