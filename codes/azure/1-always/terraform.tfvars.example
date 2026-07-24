@@ -5,12 +5,15 @@ tenant_id       = "your-azure-tenant-id"
 # Storage Account 설정
 storage_account_name = "drbackupprod2"  # 전역 고유 이름 (소문자+숫자, 3-24자)
 
-# Route53 설정 (옵션 - 도메인이 있는 경우)
-enable_route53  = true                     # true로 변경하여 활성화
-aws_region      = "us-east-1"
-domain_name     = "example.com"             # Route53 호스팅 존 도메인
-subdomain_name  = "maintenance.example.com" # 점검 페이지 서브도메인
-
 # 환경 설정 (선택사항)
 environment = "blue"
 location    = "koreacentral"
+
+# Front Door는 1-always에서 항상 생성한다.
+# maintenance: Front Door -> HTTPS Blob 점검 페이지
+# azure_service: Front Door -> Application Gateway -> AKS
+frontdoor_backend_mode = "maintenance"
+azure_appgw_ip          = ""
+
+# Front Door endpoint는 AWS CloudFront의 secondary/DR origin으로 전달한다.
+# terraform output -raw frontdoor_endpoint

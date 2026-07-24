@@ -4,11 +4,11 @@
 
 1. [`basic-review.md`](./basic-review.md)
 
-기초부터 다시 기억을 끌어올리는 자료다. VPC, EKS endpoint, ALB, CloudFront, RDS, AKS, Terraform 같은 개념을 면접 답변 형태로 정리했다.
+기초부터 다시 기억을 끌어올리는 자료다. VPC, EKS endpoint, ALB, CloudFront, Azure Front Door, RDS, AKS, Terraform 같은 개념을 면접 답변 형태로 정리했다.
 
 2. [`implementation-review.md`](./implementation-review.md)
 
-GitHub 실제 Terraform 코드 기준으로 구현 내용을 정리한 자료다. EKS endpoint 설정, 노드 그룹, CloudFront origin failover, RDS, Azure AKS, Application Gateway, MySQL 설정과 개선 포인트를 확인할 수 있다.
+GitHub 실제 Terraform 코드 기준으로 구현 내용을 정리한 자료다. EKS endpoint 설정, 노드 그룹, CloudFront와 Front Door의 Origin Group, RDS, Azure AKS, Application Gateway, MySQL 설정과 개선 포인트를 확인할 수 있다.
 
 3. [`interview-qna.md`](./interview-qna.md)
 
@@ -28,12 +28,12 @@ GitHub 실제 Terraform 코드 기준으로 구현 내용을 정리한 자료다
 
 ## 면접에서 가장 먼저 말할 요약
 
-> 이 프로젝트는 AWS 기반 3-Tier 서비스를 Azure DR 환경으로 복구할 수 있게 설계한 멀티클라우드 인프라 프로젝트입니다. 평상시에는 Route 53, CloudFront, ALB, EKS, RDS MySQL로 서비스를 운영하고, 장애가 발생하면 CloudFront가 Azure Blob 점검 페이지로 전환해 사용자에게 통제된 안내를 제공합니다. 이후 장기 장애로 판단되면 Terraform으로 Azure AKS, Application Gateway, Azure MySQL을 생성하고, 백업 DB를 복구해 서비스를 재개하는 구조입니다.
+> 이 프로젝트는 AWS 기반 3-Tier 서비스를 Azure로 단계적으로 복구하는 멀티클라우드 DR 프로젝트입니다. 평상시에는 Route 53, CloudFront, ALB, EKS, RDS로 서비스하고, AWS 장애 시 GET/HEAD 요청은 상시 배포된 Front Door를 거쳐 HTTPS Blob 점검 페이지로 자동 전환합니다. 관리자가 전체 DR을 승인하면 `2-emergency`를 배포하고 최신 dump를 복원·검증한 뒤 CloudFront를 `Front Door → Application Gateway → AKS` 경로로 수동 전환합니다.
 
 ## 면접에서 조심할 표현
 
 - 이 구조는 Active-Active가 아니라 Pilot Light/수동 DR에 가깝다.
 - EKS endpoint는 사용자 접속 주소가 아니라 Kubernetes API Server 관리 주소다.
-- CloudFront failover는 우선 점검 페이지 전환이며, 전체 서비스 자동 전환과는 다르다.
+- CloudFront failover는 정적 점검 페이지 전환이고, 전체 서비스 DR은 Front Door의 Application Gateway Origin 전환으로 구분한다.
 - 실제 코드에는 보안 개선점이 있다. 질문이 나오면 숨기지 말고 개선 방향까지 말한다.
 - 포트폴리오 설명에서는 Petclinic 기반 3-Tier DR로 통일한다.

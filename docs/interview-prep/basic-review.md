@@ -6,7 +6,7 @@ AWS를 운영 서비스의 기본 환경으로 두고, 장애 발생 시 Azure�
 
 면접에서 너무 길게 말하지 말고, 먼저 이렇게 시작하면 된다.
 
-> 운영 트래픽은 Route 53, CloudFront, ALB, EKS, RDS로 처리했고, 장애 시에는 CloudFront가 Azure Blob의 점검 페이지로 먼저 전환되도록 했습니다. 이후 장기 장애로 판단되면 Terraform의 emergency 구성을 적용해 Azure AKS, Application Gateway, Azure MySQL을 생성하고 백업 DB를 복구하는 방식으로 설계했습니다.
+> 운영 트래픽은 Route 53, CloudFront, ALB, EKS, RDS로 처리합니다. AWS 장애 시 CloudFront의 GET/HEAD 요청은 상시 배포된 Front Door를 거쳐 HTTPS Blob 점검 페이지로 자동 전환합니다. 장기 장애로 승인되면 emergency 구성을 적용해 AKS, Application Gateway, Azure MySQL을 만들고 최신 dump를 복원·검증한 뒤 CloudFront를 Front Door 직접 Origin으로 수동 전환합니다.
 
 ## 1. 전체 구조를 다시 기억하기
 
@@ -24,7 +24,7 @@ AWS를 운영 서비스의 기본 환경으로 두고, 장애 발생 시 Azure�
 
 장애 직후에는 전체 Azure 서비스를 바로 띄우지 않고, 먼저 사용자가 실패 화면을 보지 않도록 점검 페이지를 제공한다.
 
-- 1단계: CloudFront가 AWS 원본 장애를 감지하고 Azure Blob 점검 페이지로 전환
+- 1단계: CloudFront 5xx Origin Failover로 Front Door의 HTTPS Blob 점검 페이지 제공
 - 2단계: 운영자가 장기 장애라고 판단하면 Azure emergency 리소스 생성
 - 3단계: Azure MySQL에 DB 백업 복구
 - 4단계: AKS에 Web/WAS 배포 후 Application Gateway를 통해 서비스 제공
@@ -151,11 +151,13 @@ Health Check는 대상 서버나 Pod가 정상 응답하는지 주기적으로 �
 
 > 단순히 포트가 열려 있는지만 보는 것보다, 애플리케이션이 실제로 정상 동작하는지 확인할 수 있는 `/health` 같은 경로를 두는 것이 좋습니다. 다만 DB까지 강하게 물고 들어가면 일시적인 DB 지연이 전체 장애로 판단될 수 있어서, readiness와 liveness의 목적을 나눠 설계하는 것이 좋습니다.
 
-## 5. CloudFront와 장애 전환
+## 5. CloudFront·Front Door와 장애 전환
 
 ### CloudFront의 역할
 
 CloudFront는 CDN이지만, 이 프로젝트에서는 단순 캐시보다 장애 시 사용자에게 점검 페이지를 제공하는 진입점 역할이 중요했다.
+
+Azure Front Door는 `1-always`에서 상시 배포되는 CloudFront의 Azure Origin이다. 기본적으로 HTTPS Blob 점검 페이지를 제공하고, 승인된 전체 DR에서는 backend를 Application Gateway로 전환한다.
 
 면접 질문:
 
@@ -362,7 +364,8 @@ Pod는 컨테이너가 실행되는 최소 단위다. Deployment는 원하는 Po
 - ALB가 Public Subnet에 있는지
 - Web/WAS Pod가 어떤 namespace와 Service로 나뉘었는지
 - RDS가 Multi-AZ인지, subnet group은 어떻게 구성됐는지
-- CloudFront 원본이 AWS ALB와 Azure Blob으로 어떻게 나뉘었는지
+- CloudFront normal mode가 AWS ALB와 Azure Front Door Origin Group을 어떻게 사용하는지
+- Front Door가 maintenance와 azure_service backend를 어떻게 전환하는지
 - Azure `1-always`에 어떤 리소스가 있고, `2-emergency`에 어떤 리소스가 있는지
 - DB 백업 방식과 복구 절차
 - Terraform state/backend 구성
@@ -370,4 +373,4 @@ Pod는 컨테이너가 실행되는 최소 단위다. Deployment는 원하는 Po
 
 ## 13. 1분 답변 템플릿
 
-> 이 프로젝트는 AWS 기반 3-Tier 서비스를 Azure DR 환경으로 복구할 수 있게 설계한 멀티클라우드 인프라 프로젝트입니다. 평상시에는 Route 53, CloudFront, ALB, EKS, RDS MySQL로 서비스를 운영하고, 장애가 발생하면 CloudFront가 Azure Blob의 점검 페이지로 전환해 사용자에게 통제된 안내를 제공합니다. 이후 장기 장애로 판단되면 Terraform으로 Azure의 emergency 구성을 적용해 AKS, Application Gateway, Azure MySQL을 생성하고, 백업 DB를 복구해 전체 서비스를 재개하는 구조입니다. 핵심은 모든 복구를 즉시 자동화한 것이 아니라, 장애 직후 사용자 안내와 장기 장애 시 전체 복구를 분리해 비용과 운영 리스크를 조절했다는 점입니다.
+> 이 프로젝트는 AWS 기반 3-Tier 서비스를 Azure로 단계적으로 복구하는 멀티클라우드 DR 프로젝트입니다. 정상 경로는 Route 53, CloudFront, ALB, EKS, RDS이고, 장애 직후 GET/HEAD는 Front Door의 HTTPS 점검 페이지로 자동 전환됩니다. 전체 DR은 관리자 승인 후 Azure emergency 계층을 배포하고 최신 dump를 복원·검증한 다음 CloudFront를 Front Door 직접 Origin으로 수동 전환합니다. 즉시 안내와 상태가 있는 서비스 복구를 분리해 비용과 데이터 위험을 조절했습니다.

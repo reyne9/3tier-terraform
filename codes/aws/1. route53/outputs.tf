@@ -58,11 +58,14 @@ output "cloudfront_status" {
 output "origin_failover_config" {
   description = "CloudFront Origin Failover 구성"
   value = var.enable_custom_domain && local.alb_dns_name != null ? {
-    failover_enabled = true
+    traffic_mode     = var.traffic_mode
+    failover_enabled = var.traffic_mode == "normal"
     primary_origin   = local.alb_dns_name
-    secondary_origin = "${var.azure_storage_account_name}.z12.web.core.windows.net"
+    secondary_origin = local.azure_frontdoor_domain_name
     failover_codes   = [500, 502, 503, 504]
     origin_group_id  = "multi-cloud-failover-group"
+    active_origin_id = var.traffic_mode == "azure_dr" ? "azure-frontdoor-dr" : "multi-cloud-failover-group"
+    allowed_methods  = var.traffic_mode == "azure_dr" ? ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"] : ["GET", "HEAD"]
     } : {
     failover_enabled = false
     message          = "Custom domain is disabled or ALB not configured"
@@ -114,9 +117,9 @@ output "monitoring_commands" {
 output "health_check_ids" {
   description = "Route53 Health Check ID 목록"
   value = var.enable_custom_domain ? {
-    aws_alb_health_check_id    = length(aws_route53_health_check.aws_alb) > 0 ? aws_route53_health_check.aws_alb[0].id : ""
-    cloudfront_health_check_id = length(aws_route53_health_check.cloudfront) > 0 ? aws_route53_health_check.cloudfront[0].id : ""
-    azure_blob_health_check_id = length(aws_route53_health_check.azure_blob) > 0 ? aws_route53_health_check.azure_blob[0].id : ""
+    aws_alb_health_check_id         = length(aws_route53_health_check.aws_alb) > 0 ? aws_route53_health_check.aws_alb[0].id : ""
+    cloudfront_health_check_id      = length(aws_route53_health_check.cloudfront) > 0 ? aws_route53_health_check.cloudfront[0].id : ""
+    azure_frontdoor_health_check_id = length(aws_route53_health_check.azure_frontdoor) > 0 ? aws_route53_health_check.azure_frontdoor[0].id : ""
   } : {}
 }
 
@@ -137,12 +140,12 @@ output "health_check_config" {
       port    = 443
       purpose = "CloudFront End-to-End 모니터링"
     } : null
-    azure_blob = length(aws_route53_health_check.azure_blob) > 0 ? {
-      id      = aws_route53_health_check.azure_blob[0].id
-      fqdn    = "${var.azure_storage_account_name}.z12.web.core.windows.net"
+    azure_frontdoor = length(aws_route53_health_check.azure_frontdoor) > 0 ? {
+      id      = aws_route53_health_check.azure_frontdoor[0].id
+      fqdn    = local.azure_frontdoor_domain_name
       type    = "HTTPS"
       port    = 443
-      purpose = "Azure Blob Storage 백업 사이트 모니터링"
+      purpose = "Azure Front Door 점검 페이지/DR 진입점 모니터링"
     } : null
   } : {}
 }
@@ -152,9 +155,23 @@ output "health_check_commands" {
   value = var.enable_custom_domain && length(aws_route53_health_check.aws_alb) > 0 ? {
     check_aws_status        = "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.aws_alb[0].id}"
     check_cloudfront_status = length(aws_route53_health_check.cloudfront) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.cloudfront[0].id}" : ""
-    check_azure_status      = length(aws_route53_health_check.azure_blob) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.azure_blob[0].id}" : ""
+    check_frontdoor_status  = length(aws_route53_health_check.azure_frontdoor) > 0 ? "aws route53 get-health-check-status --health-check-id ${aws_route53_health_check.azure_frontdoor[0].id}" : ""
     list_all_checks         = "aws route53 list-health-checks"
   } : {}
+}
+
+output "traffic_mode" {
+  description = "현재 CloudFront 트래픽 모드"
+  value       = var.traffic_mode
+}
+
+output "active_traffic_path" {
+  description = "현재 사용자 트래픽 경로"
+  value = var.traffic_mode == "azure_dr" ? (
+    "Route53 -> CloudFront -> Azure Front Door -> Application Gateway -> AKS"
+    ) : (
+    "Route53 -> CloudFront -> AWS ALB (5xx GET/HEAD: Azure Front Door -> Blob maintenance)"
+  )
 }
 
 # =================================================

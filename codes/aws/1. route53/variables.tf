@@ -54,19 +54,32 @@ variable "alb_zone_id" {
 }
 
 # =================================================
-# Azure Secondary Site (Blob Storage / Application Gateway)
+# Azure Secondary Site (Front Door)
 # =================================================
 
-variable "azure_storage_account_name" {
-  description = "Azure Storage Account 이름 (1-always에서 생성)"
+variable "azure_frontdoor_domain_name" {
+  description = "Azure Front Door endpoint hostname (1-always의 frontdoor_endpoint output, protocol 제외)"
   type        = string
-  default     = "bloberry01"
+
+  validation {
+    condition = (
+      trimspace(var.azure_frontdoor_domain_name) != "" &&
+      !startswith(trimspace(var.azure_frontdoor_domain_name), "http://") &&
+      !startswith(trimspace(var.azure_frontdoor_domain_name), "https://")
+    )
+    error_message = "azure_frontdoor_domain_name에는 protocol 없이 Front Door hostname만 입력해야 합니다."
+  }
 }
 
-variable "azure_appgw_public_ip" {
-  description = "Azure Application Gateway Public IP (장애 장기화 시 CloudFront Origin 수동 변경용)"
+variable "traffic_mode" {
+  description = "CloudFront 트래픽 모드: normal=ALB/점검 페이지 failover, azure_dr=Front Door 전체 서비스 직접 전환"
   type        = string
-  default     = ""
+  default     = "normal"
+
+  validation {
+    condition     = contains(["normal", "azure_dr"], var.traffic_mode)
+    error_message = "traffic_mode는 normal 또는 azure_dr여야 합니다."
+  }
 }
 
 # =================================================

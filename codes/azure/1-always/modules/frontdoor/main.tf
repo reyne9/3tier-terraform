@@ -15,7 +15,7 @@ resource "azurerm_cdn_frontdoor_endpoint" "main" {
   tags = var.tags
 }
 
-# Origin Group with Failover
+# Azure DR Origin Group
 resource "azurerm_cdn_frontdoor_origin_group" "main" {
   name                     = "failover-group"
   cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
@@ -23,7 +23,7 @@ resource "azurerm_cdn_frontdoor_origin_group" "main" {
   session_affinity_enabled = false
 
   health_probe {
-    protocol            = "Http"
+    protocol            = var.backend_mode == "azure_service" ? "Http" : "Https"
     path                = "/"
     request_type        = "GET"
     interval_in_seconds = 30
@@ -36,50 +36,34 @@ resource "azurerm_cdn_frontdoor_origin_group" "main" {
   }
 }
 
-# Origin 1: AWS ALB (Primary)
-resource "azurerm_cdn_frontdoor_origin" "aws_alb" {
-  name                          = "aws-alb-primary"
+# maintenance mode: Azure Blob Static Website
+resource "azurerm_cdn_frontdoor_origin" "azure_blob" {
+  name                          = "azure-blob-secondary"
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
 
-  enabled                        = true
-  host_name                      = var.aws_alb_fqdn
+  enabled                        = var.backend_mode == "maintenance"
+  host_name                      = var.azure_blob_fqdn
   http_port                      = 80
   https_port                     = 443
-  origin_host_header             = var.aws_alb_fqdn
+  origin_host_header             = var.azure_blob_fqdn
   priority                       = 1
   weight                         = 1000
   certificate_name_check_enabled = true
 }
 
-# Origin 2: Azure Blob Storage (Secondary - Static Fallback)
-resource "azurerm_cdn_frontdoor_origin" "azure_blob" {
-  name                          = "azure-blob-secondary"
-  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
-
-  enabled                        = true
-  host_name                      = var.azure_blob_fqdn
-  http_port                      = 80
-  https_port                     = 443
-  origin_host_header             = var.azure_blob_fqdn
-  priority                       = 3
-  weight                         = 1000
-  certificate_name_check_enabled = true
-}
-
-# Origin 3: Azure Application Gateway (Secondary - Full Service, disabled by default)
-# Only create if AppGW IP is provided
+# azure_service mode: Azure Application Gateway -> AKS
 resource "azurerm_cdn_frontdoor_origin" "azure_appgw" {
   count = var.azure_appgw_ip != "" ? 1 : 0
 
   name                          = "azure-aks-appgw"
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
 
-  enabled                        = false # Enable manually when needed
+  enabled                        = var.backend_mode == "azure_service"
   host_name                      = var.azure_appgw_ip
   http_port                      = 80
   https_port                     = 443
   origin_host_header             = var.azure_appgw_ip
-  priority                       = 2
+  priority                       = 1
   weight                         = 1000
   certificate_name_check_enabled = false # IP address doesn't have cert
 }
@@ -90,18 +74,24 @@ resource "azurerm_cdn_frontdoor_route" "default" {
   cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
   cdn_frontdoor_origin_ids = concat(
-    [azurerm_cdn_frontdoor_origin.aws_alb.id],
     [azurerm_cdn_frontdoor_origin.azure_blob.id],
     var.azure_appgw_ip != "" ? [azurerm_cdn_frontdoor_origin.azure_appgw[0].id] : []
   )
 
   enabled                = true
-  forwarding_protocol    = "MatchRequest"
+  forwarding_protocol    = var.backend_mode == "azure_service" ? "HttpOnly" : "HttpsOnly"
   https_redirect_enabled = true
   patterns_to_match      = ["/*"]
   supported_protocols    = ["Http", "Https"]
 
   link_to_default_domain = true
+
+  lifecycle {
+    precondition {
+      condition     = var.backend_mode != "azure_service" || var.azure_appgw_ip != ""
+      error_message = "backend_mode가 azure_service이면 azure_appgw_ip를 입력해야 합니다."
+    }
+  }
 }
 
 # Custom Domain (Optional)

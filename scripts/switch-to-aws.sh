@@ -1,169 +1,88 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-###############################################################################
-# CloudFront Traffic Failback to AWS
-#
-# Description: 장애 복구 후 CloudFront를 AWS ALB로 복귀
-# Usage: ./switch-to-aws.sh
-###############################################################################
+# 승인된 AWS 복귀:
+# CloudFront azure_dr -> normal
+# Front Door azure_service -> maintenance
 
-set -e
+set -euo pipefail
 
-CLOUDFRONT_ID="E2OX3Z0XHNDUN"
-LAMBDA_ARN="arn:aws:lambda:us-east-1:ACCOUNT_ID:function:CloudFrontFailover:1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+AZURE_ALWAYS_DIR="${REPO_ROOT}/codes/azure/1-always"
+AWS_EDGE_DIR="${REPO_ROOT}/codes/aws/1. route53"
 
-echo "========================================="
-echo "CloudFront Failback to AWS"
-echo "========================================="
-echo ""
+APPROVED=false
+AUTO_APPROVE=false
 
-# Step 1: AWS 상태 확인
-echo "[1/6] Checking AWS infrastructure status..."
-
-# EKS 컨텍스트로 전환
-kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks > /dev/null 2>&1
-
-# Pod 상태 확인
-WAS_PODS=$(kubectl get pods -n was --no-headers 2>/dev/null | wc -l)
-WEB_PODS=$(kubectl get pods -n web --no-headers 2>/dev/null | wc -l)
-
-if [ "$WAS_PODS" -eq 0 ] || [ "$WEB_PODS" -eq 0 ]; then
-  echo "WARNING: AWS pods are not running!"
-  echo "WAS Pods: $WAS_PODS"
-  echo "WEB Pods: $WEB_PODS"
+usage() {
+  echo "Usage: $0 --approved [--auto-approve]"
   echo ""
-  read -p "Do you want to continue failback anyway? (yes/no): " CONTINUE
+  echo "  --approved      AWS ALB/EKS/RDS 복구와 데이터 정합성 검증 후 failback을 승인함"
+  echo "  --auto-approve  Terraform 확인 프롬프트 생략"
+}
 
-  if [ "$CONTINUE" != "yes" ]; then
-    echo "Failback cancelled"
-    exit 1
-  fi
-fi
-
-echo "✓ AWS infrastructure check complete"
-echo "  WAS Pods: $WAS_PODS"
-echo "  WEB Pods: $WEB_PODS"
-echo ""
-
-# Step 2: Health Check 확인
-echo "[2/6] Checking Route53 Health Check..."
-HEALTH_STATUS=$(aws route53 get-health-check-status \
-  --health-check-id 0499007e-e628-4a48-aa9c-a9337e320fdd \
-  --query 'HealthCheckObservations[0].StatusReport.Status' \
-  --output text 2>/dev/null || echo "Unknown")
-
-echo "  Health Check Status: $HEALTH_STATUS"
-
-if [[ ! "$HEALTH_STATUS" =~ "Success" ]]; then
-  echo "WARNING: Health check is not healthy"
-  echo ""
-  read -p "Do you want to continue failback anyway? (yes/no): " CONTINUE
-
-  if [ "$CONTINUE" != "yes" ]; then
-    echo "Failback cancelled"
-    exit 1
-  fi
-fi
-
-echo ""
-
-# Step 3: 현재 CloudFront 설정 백업
-echo "[3/6] Backing up current CloudFront configuration..."
-BACKUP_FILE="/tmp/cloudfront-config-failback-$(date +%Y%m%d-%H%M%S).json"
-aws cloudfront get-distribution-config --id "$CLOUDFRONT_ID" --output json > "$BACKUP_FILE"
-
-if [ ! -f "$BACKUP_FILE" ]; then
-  echo "ERROR: Failed to backup CloudFront configuration"
-  exit 1
-fi
-
-echo "✓ Backup saved to: $BACKUP_FILE"
-echo ""
-
-# Step 4: 설정 수정
-echo "[4/6] Preparing CloudFront configuration for AWS..."
-ETAG=$(cat "$BACKUP_FILE" | jq -r '.ETag')
-
-cat "$BACKUP_FILE" | jq '.DistributionConfig' | jq '
-# Default Behavior를 AWS ALB로 복귀하고 Lambda@Edge 재활성화
-.DefaultCacheBehavior.TargetOriginId = "primary-aws-alb" |
-.DefaultCacheBehavior.LambdaFunctionAssociations = {
-  "Quantity": 1,
-  "Items": [
-    {
-      "LambdaFunctionARN": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:CloudFrontFailover:1",
-      "EventType": "origin-response",
-      "IncludeBody": false
-    }
-  ]
-} |
-.Comment = "Multi-Cloud DR with Origin Failover (Restored to AWS at '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"')"
-' > /tmp/cf-aws-config.json
-
-echo "✓ Configuration prepared"
-echo ""
-
-# Step 5: CloudFront 업데이트
-echo "[5/6] Updating CloudFront distribution..."
-echo "This may take 5-10 minutes..."
-
-aws cloudfront update-distribution \
-  --id "$CLOUDFRONT_ID" \
-  --distribution-config file:///tmp/cf-aws-config.json \
-  --if-match "$ETAG" \
-  --output json > /tmp/cf-failback-result.json
-
-if [ $? -ne 0 ]; then
-  echo "ERROR: Failed to update CloudFront"
-  echo "Backup file: $BACKUP_FILE"
-  exit 1
-fi
-
-echo "✓ CloudFront update initiated"
-echo ""
-
-# Step 6: 배포 완료 대기
-echo "[6/6] Waiting for CloudFront deployment..."
-
-for i in {1..40}; do
-  STATUS=$(aws cloudfront get-distribution --id "$CLOUDFRONT_ID" --query 'Distribution.Status' --output text)
-
-  if [ "$STATUS" = "Deployed" ]; then
-    echo ""
-    echo "✓ CloudFront deployment complete!"
-    break
-  fi
-
-  echo -n "."
-  sleep 15
-
-  if [ $i -eq 40 ]; then
-    echo ""
-    echo "WARNING: Deployment is taking longer than expected"
-    echo "Check status manually: aws cloudfront get-distribution --id $CLOUDFRONT_ID"
-  fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --approved)
+      APPROVED=true
+      ;;
+    --auto-approve)
+      AUTO_APPROVE=true
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: 알 수 없는 옵션: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
 done
 
+if [ "$APPROVED" != "true" ]; then
+  echo "ERROR: AWS 복구·데이터 정합성 검증 후 failback 승인이 필요합니다." >&2
+  usage >&2
+  exit 1
+fi
+
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "ERROR: terraform 명령을 찾을 수 없습니다." >&2
+  exit 1
+fi
+
+FRONTDOOR_HOSTNAME="$(terraform -chdir="${AZURE_ALWAYS_DIR}" output -raw frontdoor_endpoint)"
+APPGW_IP="$(terraform -chdir="${AZURE_ALWAYS_DIR}" output -raw azure_appgw_ip 2>/dev/null || true)"
+
+AWS_MODE_FILE="${AWS_EDGE_DIR}/dr-mode.auto.tfvars"
+AZURE_MODE_FILE="${AZURE_ALWAYS_DIR}/dr-mode.auto.tfvars"
+
+printf 'azure_frontdoor_domain_name = "%s"\ntraffic_mode = "normal"\n' \
+  "$FRONTDOOR_HOSTNAME" >"$AWS_MODE_FILE"
+
+TF_APPLY_ARGS=(apply)
+if [ "$AUTO_APPROVE" = "true" ]; then
+  TF_APPLY_ARGS+=("-auto-approve")
+fi
+
+echo "[1/2] CloudFront를 AWS ALB + Front Door 점검 페이지 failover로 복귀"
+terraform -chdir="${AWS_EDGE_DIR}" "${TF_APPLY_ARGS[@]}"
+
+if [ -n "$APPGW_IP" ]; then
+  printf 'azure_appgw_ip = "%s"\nfrontdoor_backend_mode = "maintenance"\n' \
+    "$APPGW_IP" >"$AZURE_MODE_FILE"
+else
+  printf 'frontdoor_backend_mode = "maintenance"\n' >"$AZURE_MODE_FILE"
+fi
+
+echo "[2/2] Front Door를 HTTPS Blob 점검 페이지 대기로 복귀"
+terraform -chdir="${AZURE_ALWAYS_DIR}" "${TF_APPLY_ARGS[@]}"
+
 echo ""
-echo "========================================="
-echo "Failback Complete!"
-echo "========================================="
+echo "AWS failback 완료"
+echo "  정상: Route53 -> CloudFront -> AWS ALB -> EKS"
+echo "  장애 시 GET/HEAD: CloudFront -> Front Door -> HTTPS Blob 점검 페이지"
 echo ""
-echo "Traffic is now routed to AWS ALB with Lambda@Edge failover enabled"
-echo ""
-echo "Next steps:"
-echo "1. Invalidate CloudFront cache (optional, for immediate effect):"
-echo "   aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths '/*'"
-echo ""
-echo "2. Test the website:"
-echo "   curl -I https://blueisthenewblack.store/"
-echo ""
-echo "3. Monitor AWS resources:"
-echo "   kubectl get pods -n was -n web"
-echo ""
-echo "4. Clean up Azure resources (optional, to save costs):"
-echo "   cd codes/azure/2-emergency"
-echo "   terraform destroy"
-echo ""
-echo "Backup file location: $BACKUP_FILE"
-echo ""
+echo "Azure 2-emergency 리소스 삭제는 별도 승인 후 수행하십시오."

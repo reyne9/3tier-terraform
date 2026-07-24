@@ -8,11 +8,6 @@ variable "resource_group_name" {
   type        = string
 }
 
-variable "aws_alb_fqdn" {
-  description = "AWS Application Load Balancer FQDN"
-  type        = string
-}
-
 variable "azure_blob_fqdn" {
   description = "Azure Blob Storage static website FQDN"
   type        = string
@@ -21,6 +16,17 @@ variable "azure_blob_fqdn" {
 variable "azure_appgw_ip" {
   description = "Azure Application Gateway Public IP"
   type        = string
+}
+
+variable "backend_mode" {
+  description = "Active Front Door backend: maintenance or azure_service"
+  type        = string
+  default     = "maintenance"
+
+  validation {
+    condition     = contains(["maintenance", "azure_service"], var.backend_mode)
+    error_message = "backend_mode must be maintenance or azure_service."
+  }
 }
 
 variable "custom_domain" {

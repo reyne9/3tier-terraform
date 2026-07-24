@@ -67,16 +67,6 @@ output "appgw_subnet_id" {
   value       = azurerm_subnet.appgw.id
 }
 
-output "route53_subdomain" {
-  description = "Route53 서브도메인 (활성화된 경우)"
-  value       = var.enable_route53 ? var.subdomain_name : "Route53 비활성화"
-}
-
-output "route53_cname_target" {
-  description = "Route53 CNAME 타겟"
-  value       = module.frontdoor.frontdoor_endpoint_hostname
-}
-
 output "frontdoor_endpoint" {
   description = "Front Door Endpoint URL"
   value       = module.frontdoor.frontdoor_endpoint_hostname
@@ -85,6 +75,16 @@ output "frontdoor_endpoint" {
 output "frontdoor_id" {
   description = "Front Door Profile ID"
   value       = module.frontdoor.frontdoor_id
+}
+
+output "frontdoor_backend_mode" {
+  description = "현재 Front Door backend 모드"
+  value       = module.frontdoor.backend_mode
+}
+
+output "azure_appgw_ip" {
+  description = "Front Door Azure 서비스 Origin으로 등록된 Application Gateway Public IP"
+  value       = var.azure_appgw_ip
 }
 
 output "deployment_summary" {
@@ -100,19 +100,14 @@ output "deployment_summary" {
 
   Azure Front Door:
     - Endpoint: ${module.frontdoor.frontdoor_endpoint_hostname}
-    - Primary Origin: ${var.aws_alb_fqdn}
-    - Secondary Origin (Blob): ${var.storage_account_name}.z12.web.core.windows.net
-    - Secondary Origin (AppGW): ${var.azure_appgw_ip != "" ? var.azure_appgw_ip : "Not configured yet"}
+    - Backend Mode: ${var.frontdoor_backend_mode}
+    - Maintenance Origin: https://${var.storage_account_name}.z12.web.core.windows.net
+    - Azure Service Origin: ${var.azure_appgw_ip != "" ? var.azure_appgw_ip : "Not configured yet"}
 
   Storage Account:
     - Name: ${azurerm_storage_account.backups.name}
     - 백업 Container: ${var.backup_container_name}
     - 점검 페이지: https://${azurerm_storage_account.backups.name}.z12.web.core.windows.net/
-
-  Route53 설정:
-    - 활성화: ${var.enable_route53}
-    - 도메인: ${var.enable_route53 ? var.domain_name : "비활성화"}
-    - CNAME 타겟: ${module.frontdoor.frontdoor_endpoint_hostname}
 
   네트워크 (예약됨):
     - VNet: ${azurerm_virtual_network.main.name} (${var.vnet_cidr})
@@ -123,15 +118,12 @@ output "deployment_summary" {
 
   테스트:
     curl https://${module.frontdoor.frontdoor_endpoint_hostname}/
-    ${var.enable_route53 ? "curl https://${var.domain_name}/" : ""}
 
   백업 확인:
     az storage blob list \
       --account-name ${azurerm_storage_account.backups.name} \
       --container-name ${var.backup_container_name} \
       --output table
-
-  월 예상 비용: ~$40 (Front Door ~$35 + Storage ~$5)
 
   ========================================
   EOT

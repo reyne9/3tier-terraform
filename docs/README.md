@@ -36,7 +36,8 @@ docs/
 
 ## Architecture
 
-- [FAILOVER_CONFIGURATION.md](/docs/architecture/FAILOVER_CONFIGURATION.md): CloudFront/Route53 Failover 설정
+- [current-implementation.md](/docs/architecture/current-implementation.md): 실제 코드 기준 단계형 CloudFront→Front Door DR 경로
+- [FAILOVER_CONFIGURATION.md](/docs/architecture/FAILOVER_CONFIGURATION.md): CloudFront와 Front Door Failover 설정
 - [route53-health-check-guide.md](/docs/architecture/route53-health-check-guide.md): Route53 헬스체크와 CloudFront 구성
 - [security-architecture.md](/docs/architecture/security-architecture.md): WAF, OIDC, 암호화 중심 보안 설계
 - [infra-details-aws-route53.md](/docs/architecture/infra-details-aws-route53.md): AWS Route53 및 CloudFront

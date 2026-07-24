@@ -1,15 +1,11 @@
 # PlanB/azure/1-always/main.tf
-# 평상시 항상 실행: Storage Account (백업용 + 점검 페이지) + Route53 CNAME
+# 평상시 항상 실행: Storage Account (백업용 + 점검 페이지) + Azure Front Door
 
 terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
-    }
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
     }
   }
 }
@@ -18,10 +14,6 @@ provider "azurerm" {
   features {}
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
-}
-
-provider "aws" {
-  region = var.aws_region
 }
 
 # =================================================
@@ -109,7 +101,7 @@ resource "azurerm_storage_account" "backups" {
   account_tier             = "Standard"
   account_replication_type = var.storage_replication_type
 
-  https_traffic_only_enabled = false
+  https_traffic_only_enabled = true
 
   # Static Website 기능 활성화
   static_website {
@@ -364,12 +356,11 @@ module "frontdoor" {
   environment         = var.environment
   resource_group_name = azurerm_resource_group.main.name
 
-  # AWS Primary Origin
-  aws_alb_fqdn = var.aws_alb_fqdn
-
-  # Azure Secondary Origins
+  # maintenance: HTTPS Blob 점검 페이지
+  # azure_service: Application Gateway -> AKS
+  backend_mode    = var.frontdoor_backend_mode
   azure_blob_fqdn = "${var.storage_account_name}.z12.web.core.windows.net"
-  azure_appgw_ip  = var.azure_appgw_ip # 2-emergency에서 생성 후 입력
+  azure_appgw_ip  = var.azure_appgw_ip
 
   # Custom Domain
   custom_domain = var.custom_domain
@@ -377,29 +368,4 @@ module "frontdoor" {
   tags = var.tags
 
   depends_on = [azurerm_storage_account.backups]
-}
-
-# =================================================
-# Route53 - CNAME to Front Door (Optional)
-# =================================================
-
-# Data Source - Route53 Hosted Zone
-data "aws_route53_zone" "main" {
-  count = var.enable_route53 ? 1 : 0
-
-  name         = var.domain_name
-  private_zone = false
-}
-
-# CNAME Record - 도메인을 Front Door로 연결
-resource "aws_route53_record" "frontdoor" {
-  count = var.enable_route53 ? 1 : 0
-
-  zone_id         = data.aws_route53_zone.main[0].zone_id
-  name            = var.domain_name
-  type            = "CNAME"
-  ttl             = 300
-  allow_overwrite = true
-
-  records = [module.frontdoor.frontdoor_endpoint_hostname]
 }

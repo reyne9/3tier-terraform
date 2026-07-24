@@ -87,12 +87,12 @@ output "deployment_summary" {
     - Backend: ${join(", ", var.backend_ip_addresses)}
     - Backend Port: ${var.backend_port}
 
-  ⚠️  IMPORTANT: 1-always Front Door Origin 업데이트 필요
-    Application Gateway IP를 1-always Front Door에 추가:
+  ⚠️  IMPORTANT: DB 복원·서비스 검증 후 수동 전환 필요
+    Application Gateway IP:
     ${module.appgw.appgw_public_ip}
 
   다음 단계:
-    1. MySQL 백업 복구
+    1. 최신 MySQL dump 복구
        cd scripts
        ./restore-db.sh
 
@@ -103,30 +103,32 @@ output "deployment_summary" {
        cd scripts
        ./deploy-petclinic.sh
 
-    4. 1-always Front Door에서 Azure Origin 활성화
+    4. Application Gateway/AKS에서 읽기·쓰기 검증
+
+    5. 1-always Front Door backend를 Azure 서비스로 전환
        # 1-always terraform.tfvars에 추가:
        azure_appgw_ip = "${module.appgw.appgw_public_ip}"
+       frontdoor_backend_mode = "azure_service"
 
        # 1-always 디렉토리에서 terraform apply
        cd ../1-always
        terraform apply
 
-       # Front Door Origin 활성화
-       az afd origin update \
-         -g ${var.resource_group_name} \
-         --profile-name afd-multicloud-${var.environment} \
-         --origin-group-name failover-group \
-         --origin-name azure-aks-appgw \
-         --enabled-state Enabled
+    6. AWS CloudFront를 Front Door 직접 Origin으로 수동 전환
+       # codes/aws/1. route53/terraform.tfvars
+       azure_frontdoor_domain_name = "<1-always frontdoor_endpoint>"
+       traffic_mode = "azure_dr"
+
+       cd ../../aws/1.\ route53
+       terraform apply
 
   트래픽 흐름:
-    User → Front Door (1-always) → AWS ALB (Primary) / Azure AKS (Failover)
+    User → Route53 → CloudFront → Front Door → Application Gateway → AKS
 
   Failover 시나리오:
-    1. AWS 장애 (자동): Front Door → Azure Blob (정적 페이지)
-    2. 2-emergency 배포 후 (수동): Front Door → Azure AKS (완전 복구)
-
-  예상 배포 시간: 15-20분
+    1. AWS 장애 (자동, GET/HEAD): CloudFront → Front Door → HTTPS Blob 점검 페이지
+    2. 2-emergency 배포·최신 dump 복원·검증 후 (수동):
+       CloudFront → Front Door → Application Gateway → AKS
 
   ========================================
   EOT

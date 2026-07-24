@@ -18,12 +18,12 @@ AWS 운영 흐름:
 
 Azure DR 흐름:
 
-`CloudFront 장애 전환 -> Azure Blob 점검 페이지 -> 운영자 판단 -> Terraform 2-emergency -> AKS/App Gateway/MySQL 생성 -> DB 복구 -> 트래픽 전환`
+`CloudFront 5xx GET/HEAD -> Front Door -> HTTPS Blob 점검 페이지 -> 운영자 승인 -> Terraform 2-emergency -> 최신 dump 복원·검증 -> Front Door AppGW backend 전환 -> CloudFront direct Front Door 전환`
 
 핵심 설계:
 
 - AWS는 실제 운영 서비스 담당
-- Azure `1-always`는 저비용 대기 리소스 담당
+- Azure `1-always`는 네트워크, Storage, 점검 페이지와 Azure Front Door 담당
 - Azure `2-emergency`는 장기 장애 시 생성하는 복구 리소스 담당
 - 장애 직후 사용자 안내와 장기 장애 복구를 분리
 
@@ -220,7 +220,7 @@ ingressClassName: alb
 - 인증서 ARN이 코드에 직접 들어가 있다. 면접에서는 운영 개선점으로 “변수화 또는 ACM data source/Secret 관리”를 말하면 좋다.
 - listen port는 HTTP 80으로 되어 있다. CloudFront viewer 쪽은 HTTPS로 받고 origin에는 설정에 따라 HTTP/HTTPS가 섞일 수 있으므로 설명을 단순화해야 한다.
 
-## 6. CloudFront와 Route 53
+## 6. CloudFront, Route 53, Azure Front Door
 
 파일:
 
@@ -239,11 +239,11 @@ ingressClassName: alb
 
 면접 답변:
 
-> CloudFront Origin Group을 사용해 AWS ALB를 primary origin으로, Azure Blob static website를 secondary origin으로 두었습니다. ALB 쪽에서 5xx 계열 장애가 발생하면 CloudFront가 Azure 점검 페이지 origin으로 전환하도록 구성했습니다.
+> CloudFront Origin Group에서 AWS ALB를 primary, 상시 배포된 Azure Front Door를 secondary로 두었습니다. ALB의 연결 실패 또는 5xx가 발생하면 GET/HEAD 요청이 Front Door를 거쳐 HTTPS Blob 점검 페이지로 전환됩니다.
 
 중요한 한계:
 
-> CloudFront의 allowed method가 `GET`, `HEAD`, `OPTIONS` 중심이라 정적 점검 페이지 전환에는 맞지만, 전체 애플리케이션 트래픽을 그대로 처리하는 failover에는 제한이 있습니다. 장기 장애 시에는 origin을 Azure App Gateway 쪽으로 수동 변경하고, 쓰기 요청까지 처리하려면 allowed method와 cache behavior를 재검토해야 합니다.
+> CloudFront의 allowed method가 `GET`, `HEAD`, `OPTIONS`라 정적 점검 페이지 전환에는 맞지만 전체 애플리케이션의 쓰기 요청 failover에는 제한이 있습니다. 전체 서비스 DR은 별도 Azure Front Door에서 Application Gateway Origin을 활성화하는 경로로 분리했습니다.
 
 ### 6.2 Route 53 Health Check
 
@@ -256,6 +256,24 @@ ingressClassName: alb
 면접 답변:
 
 > Route 53 Health Check는 DNS failover의 직접 수단이라기보다 관측과 검증 목적으로 두었습니다. 실제 사용자 트래픽의 장애 전환은 CloudFront Origin Group이 담당하고, Route 53은 도메인을 CloudFront alias로 연결합니다.
+
+### 6.3 Azure Front Door Origin Group
+
+파일:
+
+- `codes/azure/1-always/modules/frontdoor/main.tf`
+
+실제 구성:
+
+- maintenance mode: Azure Blob 활성, HTTPS 전달
+- azure_service mode: Application Gateway 활성, HTTP 전달
+- `azure_service`는 `azure_appgw_ip`가 필수
+- Health probe: HTTP GET `/`, 30초
+- Route: `/*`, HTTP/HTTPS, HTTPS redirect
+
+면접 답변:
+
+> Front Door는 CloudFront의 상시 Azure Origin입니다. 평상시에는 Blob 점검 페이지를 제공하고, 승인된 전체 DR에서는 Application Gateway backend로 바뀝니다. CloudFront는 normal mode에서 ALB/Front Door Origin Group을 사용하고, azure_dr mode에서는 쓰기 요청을 위해 Front Door를 직접 선택합니다.
 
 ## 7. RDS MySQL
 
@@ -303,10 +321,11 @@ ingressClassName: alb
 - MySQL backup container
 - Static Website 점검 페이지
 - Blob lifecycle policy
+- Azure Front Door와 Origin Group
 
 면접 답변:
 
-> Azure에는 평상시에 비용이 낮은 기본 리소스만 유지했습니다. VNet과 Subnet은 미리 예약하고, Storage Account에는 점검 페이지와 MySQL 백업을 보관했습니다. 오래된 백업은 lifecycle policy로 삭제되도록 했습니다.
+> Azure에는 VNet, Subnet, Storage, 점검 페이지와 Front Door를 상시 유지했습니다. Front Door가 CloudFront의 고정 Azure Origin이 되어 장애 직후 HTTPS 점검 페이지를 제공하고, 전체 DR에서는 Application Gateway backend로 전환됩니다. 오래된 백업은 lifecycle policy로 삭제됩니다.
 
 주의할 점:
 
@@ -444,6 +463,8 @@ ingressClassName: alb
 
 - “EKS endpoint”는 사용자 접속 주소가 아니다. Kubernetes API Server 관리 주소다.
 - “CloudFront 장애 전환”은 전체 서비스 무중단 복구가 아니다. 우선 점검 페이지 전환이다.
+- CloudFront Secondary/DR Origin은 Front Door다.
+- Front Door는 maintenance mode에서 Blob, azure_service mode에서 Application Gateway를 활성화한다.
 - 이 구조는 Active-Active가 아니다. Pilot Light/수동 DR에 가깝다.
 - Web/WAS 노드 그룹 label은 있지만, 실제 Pod 스케줄링 강제 여부는 별도 확인이 필요하다.
 - 포트폴리오/면접 설명은 Petclinic 기반 3-Tier DR로 통일한다.

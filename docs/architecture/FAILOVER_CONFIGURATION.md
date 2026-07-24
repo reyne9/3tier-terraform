@@ -1,143 +1,115 @@
-# AWS to Azure Automatic Failover Configuration
+# CloudFront와 Azure Front Door Failover 구성
 
-## Overview
-CloudFront Origin Failover가 구성되어 AWS에 문제가 발생하면 자동으로 Azure Blob Storage로 전환됩니다.
+전체 기준은 [현재 구현 기준 아키텍처](./current-implementation.md)를 따른다.
 
-## Architecture
+## 정상 모드
 
-### Origin Configuration
-1. **Primary Origin**: AWS ALB (k8s-web-webingre-5d0cf16a97-840173904.ap-northeast-2.elb.amazonaws.com)
-2. **Secondary Origin**: Azure Blob Storage (bloberry01.z12.web.core.windows.net)
+`codes/aws/1. route53`:
 
-### Failover Mechanism
-- **Failover Group ID**: `failover-group`
-- **Trigger Conditions**: HTTP 상태 코드 500, 502, 503, 504
-- **Failover Path**: Primary (AWS ALB) → Secondary (Azure Blob)
-
-## Traffic Routing
-
-### 1. Static Content (Default Behavior)
-- **Path**: `/*` (모든 경로)
-- **Target**: Origin Failover Group
-- **Allowed Methods**: GET, HEAD
-- **Behavior**:
-  - AWS ALB에서 응답
-  - AWS에서 5xx 에러 발생 시 자동으로 Azure Blob Storage로 failover
-  - 정적 파일 서빙에 적합
-
-### 2. API Requests (Cache Behavior)
-- **Path**: `/api/*`
-- **Target**: Primary AWS ALB (단일 origin)
-- **Allowed Methods**: GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS
-- **Behavior**:
-  - POST/PUT/DELETE 등 쓰기 작업 지원
-  - Failover 미지원 (API는 primary만 사용)
-  - Origin Request Policy 적용으로 모든 헤더/쿼리 전달
-
-## Health Monitoring
-
-### Route53 Health Check
-- **Health Check ID**: `ccf960e1-c878-4344-97f7-2545eae7dd28`
-- **Target**: AWS ALB (k8s-web-webingre-5d0cf16a97-840173904.ap-northeast-2.elb.amazonaws.com:80)
-- **Protocol**: HTTP
-- **Path**: `/`
-- **Interval**: 30초
-- **Failure Threshold**: 3회
-
-## Testing
-
-### GET Request (Failover 지원)
-```bash
-# 정상 응답 확인
-curl -I https://blueisthenewblack.store/
-
-# Failover 테스트 (AWS 중단 시)
-# AWS ALB가 5xx 에러를 반환하면 자동으로 Azure로 전환
+```hcl
+traffic_mode                 = "normal"
+azure_frontdoor_domain_name = "<1-always frontdoor_endpoint>"
 ```
 
-### POST Request (Primary만 사용)
-```bash
-# API 엔드포인트 테스트
-curl -X POST https://blueisthenewblack.store/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","email":"test@example.com"}'
+| 항목 | 코드 값 |
+|---|---|
+| CloudFront Primary | `primary-aws-alb` |
+| CloudFront Secondary | `azure-frontdoor-dr` |
+| Origin Group | `multi-cloud-failover-group` |
+| Failover 응답 | 500, 502, 503, 504 |
+| Allowed methods | GET, HEAD |
+| Viewer protocol | HTTPS redirect |
+| Cache TTL | 0 |
+
+`codes/azure/1-always`:
+
+```hcl
+frontdoor_backend_mode = "maintenance"
+azure_appgw_ip          = ""
 ```
 
-### Health Check Status
-```bash
-# Health check 상태 확인
-aws route53 get-health-check-status \
-  --health-check-id ccf960e1-c878-4344-97f7-2545eae7dd28
+Front Door는 상시 배포되고 Blob Origin만 활성화한다. Route는 외부 HTTP를 HTTPS로 리다이렉트하고, Blob에는 `HttpsOnly`로 전달한다.
+
+## 자동 점검 페이지 전환
+
+```text
+CloudFront
+  -> AWS ALB 실패
+  -> Azure Front Door (HTTPS)
+  -> Azure Blob Static Website (HTTPS)
 ```
 
-## Failover Scenarios
+Route 53 레코드는 CloudFront Alias로 유지된다. DNS failover가 아니라 CloudFront Origin Group이 읽기 요청을 전환한다.
 
-### Scenario 1: AWS ALB 장애 (정적 콘텐츠)
-1. 사용자가 https://blueisthenewblack.store/ 요청
-2. CloudFront가 AWS ALB로 요청 전달
-3. AWS ALB에서 502/503/504 응답
-4. **자동으로 Azure Blob Storage로 failover**
-5. Azure에서 정적 파일 제공
+CloudFront Origin Failover는 `GET`, `HEAD`, `OPTIONS` 요청에만 동작한다. 이 프로젝트 normal mode는 점검 페이지 용도에 맞춰 `GET/HEAD`만 허용한다. 쓰기 요청의 자동 장애 조치를 주장하면 안 된다.
 
-### Scenario 2: API 요청 (POST/PUT/DELETE)
-1. 사용자가 https://blueisthenewblack.store/api/* 요청
-2. CloudFront가 AWS ALB로 요청 전달 (Primary만 사용)
-3. AWS 장애 시 failover 없음 (쓰기 작업의 경우 단일 origin 필요)
-4. 에러 반환
+## 승인된 전체 Azure DR
 
-## Limitations
+전제:
 
-1. **POST/PUT/DELETE는 Failover 미지원**
-   - CloudFront Origin Group은 읽기 전용(GET/HEAD)만 failover 지원
-   - 쓰기 작업은 primary origin으로만 라우팅
+- 장애대응 회의에서 전체 DR 전환 승인
+- `2-emergency` 배포 완료
+- 최신 dump 복원 완료
+- AKS, Application Gateway, Azure MySQL 검증 완료
 
-2. **Azure Blob Storage 제약**
-   - 정적 웹사이트 호스팅만 지원
-   - 동적 API 요청 처리 불가
+전환:
 
-## Recovery Process
-
-### AWS 복구 후 자동 복귀
-- AWS ALB가 정상화되면 자동으로 primary로 복귀
-- CloudFront가 자동으로 상태를 감지하고 전환
-- 수동 개입 불필요
-
-### 수동 전환 (필요 시)
-```bash
-# CloudFront 배포 상태 확인
-aws cloudfront get-distribution --id E2OX3Z0XHNDUN
-
-# Cache 무효화 (필요 시)
-aws cloudfront create-invalidation \
-  --distribution-id E2OX3Z0XHNDUN \
-  --paths "/*"
+```hcl
+# codes/azure/1-always
+azure_appgw_ip          = "<2-emergency appgw_public_ip>"
+frontdoor_backend_mode = "azure_service"
 ```
 
-## Monitoring Commands
-
-```bash
-# CloudFront 배포 상태
-aws cloudfront get-distribution --id E2OX3Z0XHNDUN \
-  --query 'Distribution.Status'
-
-# Health Check 상태
-aws route53 get-health-check-status \
-  --health-check-id ccf960e1-c878-4344-97f7-2545eae7dd28
-
-# CloudFront 설정 확인
-aws cloudfront get-distribution-config --id E2OX3Z0XHNDUN \
-  --output json | jq '.DistributionConfig.OriginGroups'
+```hcl
+# codes/aws/1. route53
+azure_frontdoor_domain_name = "<1-always frontdoor_endpoint>"
+traffic_mode                 = "azure_dr"
 ```
 
-## Configuration Files
+CloudFront는 Origin Group이 아닌 `azure-frontdoor-dr` Origin을 직접 대상으로 삼고 7개 HTTP method를 허용한다. Front Door는 Blob을 비활성화하고 Application Gateway를 활성화한다.
 
-- CloudFront Distribution ID: `E2OX3Z0XHNDUN`
-- CloudFront Domain: `dar3erndlc7gv.cloudfront.net`
-- Custom Domain: `blueisthenewblack.store`
+```text
+Route 53
+  -> CloudFront
+  -> Azure Front Door
+  -> Application Gateway
+  -> AKS
+  -> Azure MySQL
+```
 
-## Notes
+명령:
 
-- Failover는 정적 콘텐츠에만 적용
-- API 요청은 AWS 복구를 기다려야 함
-- Azure Blob Storage는 백업용 정적 페이지 역할
-- 완전한 DR을 위해서는 Azure AKS 배포 필요 (별도 구성)
+```bash
+./scripts/switch-to-azure.sh --approved --db-restored
+```
+
+Terraform 승인 프롬프트를 생략하려는 경우에만 `--auto-approve`를 추가한다.
+
+## Failback
+
+전제:
+
+- AWS ALB/EKS/RDS 정상
+- 최신 데이터 반영과 정합성 검증 완료
+- 운영자 승인 완료
+
+```bash
+./scripts/switch-to-aws.sh --approved
+```
+
+스크립트는 먼저 CloudFront를 normal mode로 복귀시키고, 그다음 Front Door를 maintenance mode로 되돌린다. Azure `2-emergency` 삭제는 별도 승인 작업이며 자동 수행하지 않는다.
+
+## 검증 명령
+
+```bash
+terraform -chdir="codes/aws/1. route53" output -json origin_failover_config
+terraform -chdir="codes/aws/1. route53" output -raw active_traffic_path
+terraform -chdir=codes/azure/1-always output -raw frontdoor_backend_mode
+terraform -chdir=codes/azure/1-always output -raw frontdoor_endpoint
+```
+
+```bash
+curl -I "https://$(terraform -chdir=codes/azure/1-always output -raw frontdoor_endpoint)/"
+```
+
+Distribution ID, Front Door endpoint, Application Gateway IP는 Terraform output에서 조회한다.

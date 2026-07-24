@@ -1,158 +1,105 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-###############################################################################
-# CloudFront Traffic Switch to Azure
-#
-# Description: AWS 장애 시 CloudFront를 Azure Application Gateway로 전환
-# Usage: ./switch-to-azure.sh
-###############################################################################
+# 승인된 전체 DR 전환:
+# Front Door maintenance -> azure_service
+# CloudFront normal -> azure_dr
 
-set -e
+set -euo pipefail
 
-CLOUDFRONT_ID="E2OX3Z0XHNDUN"
-AZURE_RG="rg-dr-blue"
-AZURE_APPGW_PIP="pip-appgw-dr-blue"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+AZURE_ALWAYS_DIR="${REPO_ROOT}/codes/azure/1-always"
+AZURE_EMERGENCY_DIR="${REPO_ROOT}/codes/azure/2-emergency"
+AWS_EDGE_DIR="${REPO_ROOT}/codes/aws/1. route53"
 
-echo "========================================="
-echo "CloudFront Failover to Azure"
-echo "========================================="
-echo ""
+APPROVED=false
+DB_RESTORED=false
+AUTO_APPROVE=false
 
-# Step 1: Azure Application Gateway IP 가져오기
-echo "[1/5] Getting Azure Application Gateway IP..."
-APPGW_IP=$(az network public-ip show \
-  --resource-group "$AZURE_RG" \
-  --name "$AZURE_APPGW_PIP" \
-  --query ipAddress -o tsv 2>/dev/null)
+usage() {
+  echo "Usage: $0 --approved --db-restored [--auto-approve]"
+  echo ""
+  echo "  --approved      장애대응 회의에서 전체 Azure DR 전환을 승인함"
+  echo "  --db-restored   2-emergency 배포 후 최신 dump 복원과 서비스 검증을 완료함"
+  echo "  --auto-approve  Terraform 확인 프롬프트 생략"
+}
 
-if [ -z "$APPGW_IP" ]; then
-  echo "ERROR: Could not get Azure Application Gateway IP"
-  echo "Please ensure Azure infrastructure is deployed:"
-  echo "  cd codes/azure/2-emergency"
-  echo "  terraform apply"
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --approved)
+      APPROVED=true
+      ;;
+    --db-restored)
+      DB_RESTORED=true
+      ;;
+    --auto-approve)
+      AUTO_APPROVE=true
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: 알 수 없는 옵션: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if [ "$APPROVED" != "true" ] || [ "$DB_RESTORED" != "true" ]; then
+  echo "ERROR: 회의 승인과 최신 dump 복원·검증을 모두 확인해야 합니다." >&2
+  usage >&2
   exit 1
 fi
 
-echo "✓ Azure Application Gateway IP: $APPGW_IP"
-echo ""
-
-# Step 2: 현재 CloudFront 설정 백업
-echo "[2/5] Backing up current CloudFront configuration..."
-BACKUP_FILE="/tmp/cloudfront-config-backup-$(date +%Y%m%d-%H%M%S).json"
-aws cloudfront get-distribution-config --id "$CLOUDFRONT_ID" --output json > "$BACKUP_FILE"
-
-if [ ! -f "$BACKUP_FILE" ]; then
-  echo "ERROR: Failed to backup CloudFront configuration"
-  exit 1
-fi
-
-echo "✓ Backup saved to: $BACKUP_FILE"
-echo ""
-
-# Step 3: ETag 추출 및 설정 수정
-echo "[3/5] Preparing new CloudFront configuration..."
-ETAG=$(cat "$BACKUP_FILE" | jq -r '.ETag')
-
-cat "$BACKUP_FILE" | jq --arg ip "$APPGW_IP" '.DistributionConfig' | jq --arg ip "$APPGW_IP" '
-# Azure Origin이 이미 있는지 확인하고 없으면 추가
-if (.Origins.Items | map(.Id) | index("azure-appgw")) then
-  # 이미 있으면 DomainName만 업데이트
-  .Origins.Items |= map(
-    if .Id == "azure-appgw" then
-      .DomainName = $ip
-    else
-      .
-    end
-  )
-else
-  # 없으면 새로 추가
-  .Origins.Items += [{
-    "Id": "azure-appgw",
-    "DomainName": $ip,
-    "OriginPath": "",
-    "CustomHeaders": {"Quantity": 0},
-    "CustomOriginConfig": {
-      "HTTPPort": 80,
-      "HTTPSPort": 443,
-      "OriginProtocolPolicy": "http-only",
-      "OriginSslProtocols": {
-        "Quantity": 1,
-        "Items": ["TLSv1.2"]
-      },
-      "OriginReadTimeout": 30,
-      "OriginKeepaliveTimeout": 5
-    },
-    "ConnectionAttempts": 3,
-    "ConnectionTimeout": 10,
-    "OriginShield": {"Enabled": false},
-    "OriginAccessControlId": ""
-  }] |
-  .Origins.Quantity = (.Origins.Items | length)
-end |
-# Default Behavior를 Azure로 전환하고 Lambda@Edge 비활성화
-.DefaultCacheBehavior.TargetOriginId = "azure-appgw" |
-.DefaultCacheBehavior.LambdaFunctionAssociations = {"Quantity": 0, "Items": []} |
-.Comment = "Multi-Cloud DR - Switched to Azure (Manual Failover at '"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"')"
-' > /tmp/cf-azure-config.json
-
-echo "✓ Configuration prepared"
-echo ""
-
-# Step 4: CloudFront 업데이트
-echo "[4/5] Updating CloudFront distribution..."
-echo "This may take 5-10 minutes..."
-
-aws cloudfront update-distribution \
-  --id "$CLOUDFRONT_ID" \
-  --distribution-config file:///tmp/cf-azure-config.json \
-  --if-match "$ETAG" \
-  --output json > /tmp/cf-update-result.json
-
-if [ $? -ne 0 ]; then
-  echo "ERROR: Failed to update CloudFront"
-  echo "Backup file: $BACKUP_FILE"
-  exit 1
-fi
-
-echo "✓ CloudFront update initiated"
-echo ""
-
-# Step 5: 배포 완료 대기
-echo "[5/5] Waiting for CloudFront deployment..."
-
-for i in {1..40}; do
-  STATUS=$(aws cloudfront get-distribution --id "$CLOUDFRONT_ID" --query 'Distribution.Status' --output text)
-
-  if [ "$STATUS" = "Deployed" ]; then
-    echo ""
-    echo "✓ CloudFront deployment complete!"
-    break
-  fi
-
-  echo -n "."
-  sleep 15
-
-  if [ $i -eq 40 ]; then
-    echo ""
-    echo "WARNING: Deployment is taking longer than expected"
-    echo "Check status manually: aws cloudfront get-distribution --id $CLOUDFRONT_ID"
+for command_name in terraform curl; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: 필요한 명령을 찾을 수 없습니다: ${command_name}" >&2
+    exit 1
   fi
 done
 
+APPGW_IP="$(terraform -chdir="${AZURE_EMERGENCY_DIR}" output -raw appgw_public_ip)"
+FRONTDOOR_HOSTNAME="$(terraform -chdir="${AZURE_ALWAYS_DIR}" output -raw frontdoor_endpoint)"
+
+if [ -z "$APPGW_IP" ] || [ -z "$FRONTDOOR_HOSTNAME" ]; then
+  echo "ERROR: Application Gateway IP 또는 Front Door endpoint를 확인할 수 없습니다." >&2
+  exit 1
+fi
+
+echo "[1/4] Application Gateway/AKS 응답 확인: http://${APPGW_IP}/"
+curl --fail --silent --show-error --max-time 15 "http://${APPGW_IP}/" >/dev/null
+
+AZURE_MODE_FILE="${AZURE_ALWAYS_DIR}/dr-mode.auto.tfvars"
+AWS_MODE_FILE="${AWS_EDGE_DIR}/dr-mode.auto.tfvars"
+
+printf 'azure_appgw_ip = "%s"\nfrontdoor_backend_mode = "azure_service"\n' \
+  "$APPGW_IP" >"$AZURE_MODE_FILE"
+printf 'azure_frontdoor_domain_name = "%s"\ntraffic_mode = "azure_dr"\n' \
+  "$FRONTDOOR_HOSTNAME" >"$AWS_MODE_FILE"
+
+TF_APPLY_ARGS=(apply)
+if [ "$AUTO_APPROVE" = "true" ]; then
+  TF_APPLY_ARGS+=("-auto-approve")
+fi
+
+echo "[2/4] Front Door backend를 Application Gateway로 전환"
+terraform -chdir="${AZURE_ALWAYS_DIR}" "${TF_APPLY_ARGS[@]}"
+
+echo "[3/4] Front Door HTTPS 경로 확인: https://${FRONTDOOR_HOSTNAME}/"
+curl --fail --silent --show-error --max-time 15 "https://${FRONTDOOR_HOSTNAME}/" >/dev/null
+
+echo "[4/4] CloudFront를 Front Door 직접 Origin으로 전환"
+terraform -chdir="${AWS_EDGE_DIR}" "${TF_APPLY_ARGS[@]}"
+
 echo ""
-echo "========================================="
-echo "Failover Complete!"
-echo "========================================="
+echo "전체 Azure DR 전환 완료"
+echo "  Route53 -> CloudFront -> Front Door -> Application Gateway -> AKS"
+echo "  CloudFront traffic_mode: azure_dr"
+echo "  Front Door backend_mode: azure_service"
 echo ""
-echo "Next steps:"
-echo "1. Invalidate CloudFront cache (optional, for immediate effect):"
-echo "   aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths '/*'"
-echo ""
-echo "2. Test the website:"
-echo "   curl -I https://blueisthenewblack.store/"
-echo ""
-echo "3. Monitor Azure resources:"
-echo "   kubectl get pods -A --context aks-dr-blue"
-echo ""
-echo "Backup file location: $BACKUP_FILE"
-echo ""
+echo "상태 파일:"
+echo "  ${AZURE_MODE_FILE}"
+echo "  ${AWS_MODE_FILE}"

@@ -25,7 +25,15 @@ eks_cluster_name = "blue-eks-cluster"  # aws/service의 EKS 클러스터 이름
 # alb_zone_id  = "Z3JE5OI70TWKCP"
 
 # =================================================
-# Azure Secondary Site (Application Gateway)
+# Azure Secondary/DR Site (1-always Front Door)
 # =================================================
-# azure/2-failover 배포 후 terraform output으로 확인한 Public IP 입력
-# azure_appgw_public_ip = "20.196.XXX.XXX"
+# 먼저 codes/azure/1-always를 배포하고 다음 output을 입력:
+# terraform -chdir="../../azure/1-always" output -raw frontdoor_endpoint
+azure_frontdoor_domain_name = "multicloud-endpoint.azurefd.net"
+
+# normal:
+#   CloudFront -> ALB
+#   ALB 5xx GET/HEAD -> Front Door -> Blob 점검 페이지
+# azure_dr:
+#   CloudFront -> Front Door -> App Gateway -> AKS (7개 HTTP method 허용)
+traffic_mode = "normal"

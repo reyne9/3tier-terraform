@@ -1,5 +1,5 @@
 # aws/route53/main.tf
-# Route53 Failover 설정: Primary(AWS ALB) → Secondary(Azure)
+# Route53 + CloudFront 단계형 DR 전환
 
 terraform {
   required_version = ">= 1.14.0"
@@ -81,22 +81,29 @@ locals {
   alb_zone_id = var.alb_zone_id != "" ? var.alb_zone_id : (
     length(data.aws_lb.ingress_alb) > 0 ? data.aws_lb.ingress_alb[0].zone_id : null
   )
+
+  azure_frontdoor_domain_name = trimsuffix(
+    trimprefix(trimprefix(trimspace(var.azure_frontdoor_domain_name), "https://"), "http://"),
+    "/"
+  )
 }
 
 # =================================================
 # CloudFront Distribution (Origin Failover)
 # =================================================
 
-# CloudFront with Origin Failover
-# Primary Origin: AWS ALB
-# Secondary Origin: Azure Blob Storage → App Gateway (장애 장기화 시)
+# normal:
+#   CloudFront Origin Group -> AWS ALB
+#   AWS 5xx -> Azure Front Door -> Azure Blob 점검 페이지
+# azure_dr:
+#   CloudFront -> Azure Front Door -> Application Gateway -> AKS
 
 resource "aws_cloudfront_distribution" "main" {
   count = var.enable_custom_domain && local.alb_dns_name != null ? 1 : 0
 
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "Multi-Cloud DR with Origin Failover"
+  comment             = "Multi-Cloud DR (${var.traffic_mode})"
   default_root_object = ""
   aliases             = [var.domain_name]
 
@@ -113,7 +120,7 @@ resource "aws_cloudfront_distribution" "main" {
     }
 
     member {
-      origin_id = "secondary-azure"
+      origin_id = "azure-frontdoor-dr"
     }
   }
 
@@ -125,7 +132,7 @@ resource "aws_cloudfront_distribution" "main" {
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https-only"
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
 
@@ -135,11 +142,11 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Secondary Origin: Azure Blob Storage (초기) / App Gateway (장애 장기화)
-  # lifecycle ignore_changes로 수동 변경 가능
+  # Secondary/DR Origin: Azure Front Door
+  # Front Door는 1-always에서 상시 배포되고 기본적으로 Blob 점검 페이지를 제공한다.
   origin {
-    domain_name = "${var.azure_storage_account_name}.z12.web.core.windows.net"
-    origin_id   = "secondary-azure"
+    domain_name = local.azure_frontdoor_domain_name
+    origin_id   = "azure-frontdoor-dr"
 
     custom_origin_config {
       http_port              = 80
@@ -154,15 +161,20 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Default Cache Behavior - Origin Group 사용
+  # normal은 읽기 전용 Origin Failover, azure_dr은 Front Door 직접 전환이다.
+  # Origin Group은 쓰기 요청을 failover하지 않으므로 azure_dr에서만 7개 method를 연다.
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods = var.traffic_mode == "azure_dr" ? [
+      "GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"
+      ] : [
+      "GET", "HEAD"
+    ]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "multi-cloud-failover-group"
+    target_origin_id = var.traffic_mode == "azure_dr" ? "azure-frontdoor-dr" : "multi-cloud-failover-group"
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "CloudFront-Forwarded-Proto", "Origin"]
+      headers      = ["Origin"]
 
       cookies {
         forward = "all"
@@ -198,12 +210,14 @@ resource "aws_cloudfront_distribution" "main" {
     Name        = "${var.domain_name}-cloudfront-dr"
     Environment = var.environment
     Purpose     = "Multi-Cloud-DR-Failover"
+    TrafficMode = var.traffic_mode
   }
 
   lifecycle {
-    ignore_changes = [
-      origin
-    ]
+    precondition {
+      condition     = local.azure_frontdoor_domain_name != ""
+      error_message = "azure_frontdoor_domain_name에는 1-always의 Front Door endpoint hostname을 입력해야 합니다."
+    }
   }
 }
 
@@ -251,11 +265,11 @@ resource "aws_route53_health_check" "cloudfront" {
   }
 }
 
-# Health Check for Azure Blob Storage (Secondary)
-resource "aws_route53_health_check" "azure_blob" {
-  count = var.enable_custom_domain && var.azure_storage_account_name != "" ? 1 : 0
+# Health Check for Azure Front Door (Secondary/DR)
+resource "aws_route53_health_check" "azure_frontdoor" {
+  count = var.enable_custom_domain && local.azure_frontdoor_domain_name != "" ? 1 : 0
 
-  fqdn              = "${var.azure_storage_account_name}.z12.web.core.windows.net"
+  fqdn              = local.azure_frontdoor_domain_name
   port              = 443
   type              = "HTTPS"
   resource_path     = "/"
@@ -265,9 +279,9 @@ resource "aws_route53_health_check" "azure_blob" {
   enable_sni        = true
 
   tags = {
-    Name        = "${var.environment}-azure-blob-health-check"
+    Name        = "${var.environment}-azure-frontdoor-health-check"
     Environment = var.environment
-    Purpose     = "Azure-Blob-Storage-Monitoring"
+    Purpose     = "Azure-Front-Door-Monitoring"
   }
 }
 

@@ -19,7 +19,7 @@
 ```
 Internet
     ↓
-CloudFront (Optional)
+Route 53 → CloudFront
     ↓
 ALB (Application Load Balancer)
     ↓
@@ -35,6 +35,8 @@ ALB (Application Load Balancer)
                 ↓
     Azure Blob Storage (Backup)
 ```
+
+Azure `1-always`에는 CloudFront의 상시 Azure Origin인 Front Door가 있다. 기본적으로 HTTPS Blob 점검 페이지를 제공하며, 승인된 전체 DR에서는 Application Gateway backend로 전환한다.
 
 ### 주요 컴포넌트
 
@@ -69,7 +71,7 @@ aws sts get-caller-identity
 
 ### Azure Storage Account
 백업용 Azure Blob Storage가 필요합니다:
-- Storage Account: `bloberry01`
+- Storage Account: `codes/azure/1-always`에서 생성한 실제 이름
 - Container: `mysql-backups`
 - Storage Key는 `terraform.tfvars`에 설정
 
@@ -92,7 +94,7 @@ environment = "blue"
 aws_region  = "ap-northeast-2"
 
 # Azure 연동 (백업용)
-azure_storage_account_name  = "bloberry01"
+azure_storage_account_name  = "<storage-account-name>"
 azure_storage_account_key   = "YOUR_STORAGE_KEY"  # 최신 키로 업데이트 필요
 azure_backup_container_name = "mysql-backups"
 
@@ -113,7 +115,7 @@ rds_multi_az       = true
 ```bash
 # 최신 Storage Key 가져오기
 az storage account keys list \
-  --account-name bloberry01 \
+  --account-name "<storage-account-name>" \
   --resource-group rg-dr-blue \
   --query "[0].value" -o tsv
 
@@ -380,7 +382,7 @@ sudo crontab -l
 
 # Azure Blob Storage 백업 확인 (로컬)
 az storage blob list \
-  --account-name bloberry01 \
+  --account-name "<storage-account-name>" \
   --container-name mysql-backups \
   --prefix "backups/" \
   --output table
@@ -555,17 +557,23 @@ terraform output backup_instance_id
 
 ### 다음 단계
 
-1. **Route53/CloudFront 설정** (선택사항)
+1. **Route53/CloudFront 설정**
    - 도메인 연결
    - HTTPS 인증서
-   - Multi-region failover
+   - AWS ALB → Azure Blob 5xx failover
 
-2. **모니터링 설정**
+2. **Azure 1-always/Front Door 설정**
+   - `frontdoor_backend_mode = "maintenance"` 확인
+   - `frontdoor_endpoint` output을 AWS CloudFront의 `azure_frontdoor_domain_name`에 반영
+   - Front Door endpoint와 Origin 상태 확인
+   - CloudFront endpoint와 별도로 검증
+
+3. **모니터링 설정**
    - CloudWatch Logs
    - CloudWatch Metrics
    - RDS Enhanced Monitoring
 
-3. **백업 검증**
+4. **백업 검증**
    - Azure Blob Storage 백업 확인
    - 복구 테스트
 

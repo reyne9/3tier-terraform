@@ -18,11 +18,6 @@ output "origin_group_id" {
   value       = azurerm_cdn_frontdoor_origin_group.main.id
 }
 
-output "aws_origin_id" {
-  description = "AWS ALB origin ID"
-  value       = azurerm_cdn_frontdoor_origin.aws_alb.id
-}
-
 output "azure_blob_origin_id" {
   description = "Azure Blob origin ID"
   value       = azurerm_cdn_frontdoor_origin.azure_blob.id
@@ -31,4 +26,9 @@ output "azure_blob_origin_id" {
 output "azure_appgw_origin_id" {
   description = "Azure Application Gateway origin ID"
   value       = var.azure_appgw_ip != "" ? azurerm_cdn_frontdoor_origin.azure_appgw[0].id : null
+}
+
+output "backend_mode" {
+  description = "Active Azure Front Door backend mode"
+  value       = var.backend_mode
 }

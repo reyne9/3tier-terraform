@@ -87,42 +87,22 @@ variable "tenant_id" {
   sensitive   = true
 }
 
-# Route53 관련 변수
-variable "aws_region" {
-  description = "AWS 리전 (Route53용)"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "enable_route53" {
-  description = "Route53 CNAME 레코드 생성 여부"
-  type        = bool
-  default     = false
-}
-
-variable "domain_name" {
-  description = "Route53 호스팅 존 도메인 이름 (예: example.com)"
-  type        = string
-  default     = ""
-}
-
-variable "subdomain_name" {
-  description = "Azure 점검 페이지 서브도메인 (예: maintenance.example.com)"
-  type        = string
-  default     = ""
-}
-
 # Front Door 관련 변수
-variable "aws_alb_fqdn" {
-  description = "AWS ALB FQDN (Primary Origin)"
-  type        = string
-  default     = ""
-}
-
 variable "azure_appgw_ip" {
   description = "Azure Application Gateway Public IP (2-emergency에서 생성 후 입력)"
   type        = string
   default     = ""
+}
+
+variable "frontdoor_backend_mode" {
+  description = "Front Door backend 모드: maintenance=HTTPS Blob, azure_service=Application Gateway/AKS"
+  type        = string
+  default     = "maintenance"
+
+  validation {
+    condition     = contains(["maintenance", "azure_service"], var.frontdoor_backend_mode)
+    error_message = "frontdoor_backend_mode는 maintenance 또는 azure_service여야 합니다."
+  }
 }
 
 variable "custom_domain" {

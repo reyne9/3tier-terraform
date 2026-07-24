@@ -1,220 +1,142 @@
-# DR (Disaster Recovery) 테스트 가이드
+# DR 테스트 가이드
 
-## 테스트 시나리오
+## 테스트 목표
 
-**Azure Front Door 기반 자동 Failover**
+1. 정상 AWS 경로 확인
+2. AWS 장애 시 HTTPS 점검 페이지 자동 전환 확인
+3. 쓰기 method 자동 failover 제한 재현
+4. 승인된 전체 Azure DR 전환 확인
+5. AWS failback 확인
 
-1. **장애 발생 (즉시)**: Azure Front Door가 자동으로 Azure Blob Storage로 failover (정적 유지보수 페이지)
-2. **장애 장기화 (30분+)**: Azure AKS 배포 → Front Door Origin을 AKS로 전환 (전체 기능 복구)
-3. **장애 복구**: AWS 복구 → Front Door Origin을 AWS로 failback
+## 사전 조건
 
-**소요 시간**:
-- 자동 Failover: 즉시 (30초 이내)
-- 완전 복구: 30-40분 (AKS 배포 포함)
-
----
-
-## Phase 1: 모의 장애 발생
-
-```bash
-./scripts/simulate-failure.sh
-```
-
-**예상 결과**: Azure Blob Storage 유지보수 페이지 표시 (30초 이내)
-
----
-
-## Phase 2: Azure AKS 배포 (장애 장기화 시)
+- Azure `1-always` 배포 완료
+- Front Door endpoint HTTPS 응답 정상
+- CloudFront `traffic_mode = "normal"`
+- Front Door `frontdoor_backend_mode = "maintenance"`
+- AWS ALB/EKS/RDS 정상
+- 테스트 데이터와 복구용 최신 dump 준비
 
 ```bash
-# 1. Azure 인프라 배포
-cd codes/azure/2-emergency
-terraform init
-terraform apply -auto-approve
-
-# 2. AKS 자격증명
-az aks get-credentials --resource-group rg-dr-blue --name aks-dr-blue --overwrite-existing
-
-# 3. DB 복원
-cd scripts
-./restore-db.sh
-
-# 4. 애플리케이션 배포
-./deploy-petclinic.sh
+terraform -chdir="codes/aws/1. route53" output -raw traffic_mode
+terraform -chdir=codes/azure/1-always output -raw frontdoor_backend_mode
 ```
 
-**소요 시간**: 약 15-20분
-
----
-
-## Phase 3: Front Door Origin 전환 (완전 복구)
+## 테스트 1: 정상 AWS 경로
 
 ```bash
-# Azure AKS Origin 추가
-APPGW_IP=$(az network public-ip show -g rg-dr-blue --name pip-appgw-dr-blue --query ipAddress -o tsv)
-
-az afd origin create \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name azure-aks-appgw \
-  --host-name $APPGW_IP \
-  --origin-host-header $APPGW_IP \
-  --priority 2 \
-  --weight 1000 \
-  --enabled-state Enabled \
-  --http-port 80
-
-# Azure Blob Origin 비활성화
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name azure-blob-secondary \
-  --enabled-state Disabled
+curl -I "https://<service-domain>/"
 ```
 
-**예상 결과**: GET/POST 모두 정상 작동
+확인:
 
----
+- HTTP 접속 시 HTTPS redirect
+- CloudFront 응답
+- AWS 애플리케이션 화면
+- 조회·쓰기 정상
 
-## Phase 4: AWS 복구
+## 테스트 2: 자동 HTTPS 점검 페이지
+
+허가된 장애 시뮬레이션 방법으로 ALB가 실패 응답을 반환하게 한다.
+
+기대 경로:
+
+```text
+CloudFront -> Front Door -> Blob 점검 페이지
+```
+
+기대 결과:
+
+- GET/HEAD 요청이 자동으로 점검 페이지 응답
+- 사용자 도메인과 HTTPS 유지
+- Front Door endpoint도 HTTPS 응답
+- 점검 페이지에 입력 기능 없음
+
+CloudFront Origin Group의 전환 조건은 연결 실패와 설정된 `500/502/503/504`다.
+
+## 테스트 3: 쓰기 요청 제한
+
+장애 상태에서 애플리케이션 쓰기 endpoint에 테스트 요청을 보낸다.
+
+기대 결과:
+
+- POST/PUT/PATCH/DELETE는 Origin Group Secondary로 자동 전환되지 않음
+- GET으로 다시 접속하면 점검 페이지 확인
+
+이 결과는 DR 실패가 아니라 점검 페이지 단계의 의도된 제한이다.
+
+## 테스트 4: `2-emergency` 배포와 DB 복원
+
+관리자 승인 후 실행한다.
 
 ```bash
-# AWS Pod 재시작
-kubectl config use-context arn:aws:eks:ap-northeast-2:ACCOUNT_ID:cluster/blue-eks
-kubectl scale deployment petclinic-was -n was --replicas=2
-kubectl scale deployment web-nginx -n web --replicas=2
+terraform -chdir=codes/azure/2-emergency apply
 ```
 
-**대기 시간**: 2-3분 (Pod 시작)
+최신 dump 복원 후 다음을 확인한다.
 
----
+- schema/table
+- 주요 row count
+- 최근 데이터 시점
+- 애플리케이션 연결
 
-## Phase 5: Failback (AWS로 복귀)
-
-**중요**: Azure Front Door는 Priority 기반 라우팅을 사용하지만, 한번 failover된 후 자동으로 failback하지 않습니다. **수동 전환**이 필요합니다.
-
-### 방법 1: Azure Blob Origin 비활성화 (권장)
+## 테스트 5: Azure 서비스 사전 검증
 
 ```bash
-# 1. Azure Blob Origin 비활성화하여 강제로 AWS로 전환
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name azure-blob-secondary \
-  --enabled-state Disabled
-
-# 2. 30초 대기 후 테스트
-sleep 30
-curl -s https://blueisthenewblack.store/ | grep -i petclinic
-
-# 3. 확인 후 Azure Blob Origin 재활성화 (백업용)
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name azure-blob-secondary \
-  --enabled-state Enabled
+APPGW_IP=$(terraform -chdir=codes/azure/2-emergency output -raw appgw_public_ip)
+curl -I "http://${APPGW_IP}/"
 ```
 
-### 방법 2: AWS Origin 토글
+AKS Pod, Service, App Gateway backend health를 확인하고 테스트 데이터 쓰기·재조회를 수행한다.
+
+## 테스트 6: 수동 전체 DR
 
 ```bash
-# 1. AWS Origin 일시 비활성화
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name aws-alb-primary \
-  --enabled-state Disabled
-
-# 2. 5초 대기
-sleep 5
-
-# 3. AWS Origin 재활성화
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name aws-alb-primary \
-  --enabled-state Enabled
-
-# 4. 30초 대기 후 테스트
-sleep 30
-curl -s https://blueisthenewblack.store/ | grep -i petclinic
+./scripts/switch-to-azure.sh --approved --db-restored
 ```
 
-### Azure AKS가 배포된 경우
+기대 상태:
+
+- Front Door: `azure_service`
+- CloudFront: `azure_dr`
+- CloudFront allowed methods: 7개
+- 경로: `CloudFront → Front Door → App Gateway → AKS`
+
+서비스 도메인에서 읽기, 쓰기, DB 재조회를 반복한다.
+
+## 테스트 7: Failback
+
+AWS 복구와 데이터 정합성 검증 후:
 
 ```bash
-# Azure AKS Origin 비활성화
-az afd origin update \
-  -g rg-dr-blue \
-  --profile-name afd-multicloud-dr \
-  --origin-group-name failover-group \
-  --origin-name azure-aks-appgw \
-  --enabled-state Disabled
+./scripts/switch-to-aws.sh --approved
 ```
 
-**예상 결과**: 트래픽이 AWS ALB로 복귀 (Priority 1)
+기대 상태:
 
----
+- CloudFront: `normal`
+- Front Door: `maintenance`
+- 정상 요청: AWS ALB
+- AWS 재장애 GET/HEAD: Front Door HTTPS 점검 페이지
 
-## Phase 6: Azure 리소스 정리 (선택사항)
+## 기록 항목
 
-```bash
-cd codes/azure/2-emergency
-terraform destroy -auto-approve
-```
+- 장애 주입 시각
+- 점검 페이지 최초 확인 시각
+- `2-emergency` 시작/완료 시각
+- dump 시점과 복원 완료 시각
+- Azure 서비스 검증 결과
+- 수동 전환 승인자와 실행자
+- CloudFront/Front Door 적용 완료 시각
+- failback 승인과 데이터 정합성 결과
 
----
+## 완료 체크리스트
 
-## 주요 스크립트
-
-- **장애 시뮬레이션**: `./scripts/simulate-failure.sh`
-- **DB 복원**: `./codes/azure/2-emergency/scripts/restore-db.sh`
-- **애플리케이션 배포**: `./codes/azure/2-emergency/scripts/deploy-petclinic.sh`
-
----
-
-## 아키텍처
-
-```
-Azure Front Door (Global)
-├─ Origin Group: failover-group
-│  ├─ Priority 1: AWS ALB (primary)
-│  ├─ Priority 2: Azure AKS App Gateway (장애 장기화 시)
-│  └─ Priority 3: Azure Blob Storage (정적 페이지, 기본 failover)
-└─ Custom Domain: blueisthenewblack.store
-
-Health Probe: HTTP / (30초 간격)
-Failover 조건: 3회 연속 실패
-```
-
----
-
-## 테스트 체크리스트
-
-- [ ] Phase 1: AWS 장애 시 Azure Blob으로 자동 failover (30초 이내)
-- [ ] Phase 2: Azure AKS 배포 완료 (15-20분)
-- [ ] Phase 3: Azure AKS Origin 전환 후 GET/POST 정상
-- [ ] Phase 4: AWS 복구 완료
-- [ ] Phase 5: AWS로 Failback 완료
-- [ ] Phase 6: Azure 리소스 정리
-
----
-
-## 참고사항
-
-**Azure Front Door vs CloudFront**:
-- ✅ POST/PUT/DELETE 완전 지원
-- ✅ Multi-cloud failover (AWS + Azure)
-- ✅ 자동 health check 및 failover
-- ✅ Custom domain 및 SSL
-
-**현재 구성**:
-- Front Door Profile: `afd-multicloud-dr`
-- Endpoint: `multicloud-endpoint-d8cah5e8ergrckg4.a03.azurefd.net`
-- Custom Domain: `blueisthenewblack.store` (설정 진행 중)
+- [ ] 정상 AWS 경로 검증
+- [ ] 자동 HTTPS 점검 페이지 검증
+- [ ] 쓰기 요청 제한 재현
+- [ ] 최신 dump 복원
+- [ ] Azure 읽기·쓰기 검증
+- [ ] 수동 전체 DR 검증
+- [ ] AWS failback 검증
+- [ ] `1-always` 상시 유지 확인
