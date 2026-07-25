@@ -53,14 +53,14 @@ Route 53
 
 ## Front Door 상시 유지의 판단
 
-Front Door는 비용이 들지만 다음 이유로 상시 유지한다.
+Front Door는 Azure DR Origin의 HTTPS 접속 문제를 해결하기 위해 도입했다. 현재 Application Gateway의 IP 기반 HTTP listener 앞에서 CloudFront용 관리형 TLS hostname과 고정 HTTPS endpoint를 제공한다. 개인 도메인의 사용자 TLS는 CloudFront의 `us-east-1` ACM 인증서가 계속 처리한다.
 
-- 장애 전에 HTTPS 점검 경로를 검증
-- CloudFront의 Azure Origin hostname 고정
-- Blob과 App Gateway backend 전환점 통일
+- 장애 전에 인증서와 HTTPS 점검 경로를 검증
+- CloudFront의 Azure HTTPS Origin hostname 고정
+- Blob과 Application Gateway backend 전환점 통일
 - 장애 중 신규 Edge 배포와 DNS 변경 회피
 
-Blob 기본 endpoint도 HTTPS를 제공하므로 “HTTPS만을 위해 Front Door가 필수”라고 설명하지 않는다.
+Blob endpoint 자체도 HTTPS를 제공하지만, 점검 페이지와 전체 Azure 서비스가 동일한 Front Door HTTPS Origin을 사용하게 만드는 것이 핵심이다.
 
 ## Terraform 구성
 

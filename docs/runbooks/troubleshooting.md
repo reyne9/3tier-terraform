@@ -51,6 +51,8 @@ CloudFront Origin Failover는 GET, HEAD, OPTIONS에만 동작한다. 프로젝�
 
 ## 4. Front Door 점검 페이지 HTTPS가 실패한다
 
+Front Door는 Azure DR 경로에서 서비스 도메인의 HTTPS 접속 문제를 해결하기 위해 도입했다. `1-always`에 상시 배포해 장애 전에 관리형 TLS와 CloudFront Origin 경로를 검증한다.
+
 확인:
 
 - Front Door가 `1-always`에 배포됐는지
@@ -137,7 +139,40 @@ Security Group, ENI, Load Balancer 등 외부 생성 리소스의 의존성을 �
 
 `1-always`는 Front Door, Storage, 네트워크를 포함하므로 전체 DR 종료 시 삭제 대상이 아니다.
 
-## 11. Failback 후 Azure로 계속 간다
+## 11. AWS Load Balancer Controller가 실행되지 않는다
+
+증상:
+
+- Controller Deployment가 `0/2` 상태다.
+- Ingress를 생성해도 Controller가 처리하지 않는다.
+
+확인:
+
+- EKS OIDC Provider가 연결됐는지
+- 전용 IAM Role의 trust policy가 OIDC와 일치하는지
+- ServiceAccount annotation의 Role ARN이 올바른지
+- Controller Pod 로그에 권한 오류가 있는지
+
+해결:
+
+OIDC, IAM Role, ServiceAccount를 IRSA로 연결하고 Controller Deployment를 재시작한다. 정상 기준은 Controller Pod 2개 Ready와 Ingress 이벤트 처리다.
+
+## 12. Ingress를 생성했지만 ALB가 만들어지지 않는다
+
+증상:
+
+- `kubectl get ingress`의 `ADDRESS`가 계속 비어 있다.
+- Controller 로그에 `no matching subnets`가 나타난다.
+
+원인:
+
+ALB가 사용할 두 개 이상의 Public Subnet에 `kubernetes.io/role/elb` 또는 cluster 식별 태그가 누락됐다.
+
+해결:
+
+Network Terraform에서 EKS용 Public Subnet 태그를 코드로 고정하고 Ingress를 다시 적용한다. `ADDRESS` 할당, ALB와 Target Group 생성, HTTP 200을 확인한다.
+
+## 13. Failback 후 Azure로 계속 간다
 
 확인:
 
@@ -157,7 +192,11 @@ AWS가 아직 비정상이면 normal mode의 GET/HEAD는 다시 Front Door 점�
 
 | 사례 | 원인 | 개선 |
 |---|---|---|
-| CloudFront 전환 후 쓰기 실패 | Origin Failover method 제한 | 점검 페이지와 전체 DR 상태 분리 |
+| Azure 서비스 전환 후 정보 입력 실패 | Origin Failover method 제한 | 점검 페이지와 전체 DR 상태 분리 |
+| Azure DR 서비스 HTTPS 접속 실패 | AppGW가 IP 기반 HTTP listener만 제공 | Front Door 관리형 TLS와 고정 HTTPS Edge 상시 배포 |
+| CloudFront에서 ALB 연결 시 502 | Origin protocol과 ALB listener 불일치 | ALB HTTP 80에 맞춰 `http-only` 적용 |
+| AWS Load Balancer Controller 설치 실패 | OIDC/IAM/ServiceAccount 연결 불일치 | IRSA 구성 순서와 의존성 명시 |
+| Ingress ALB 미생성 | Public Subnet 태그 누락 | EKS용 Subnet 태그를 Terraform에 고정 |
 | App Gateway 502 | stale WAS LoadBalancer IP | backend IP 재조회·health 검증 |
 | Azure MySQL 인증 실패 | Secret과 관리자 계정 불일치 | `mysqladmin` validation과 Secret 정렬 |
 | Terraform destroy 실패 | 외부 생성 네트워크 의존성 | 삭제 순서와 종속 리소스 점검 |

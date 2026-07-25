@@ -42,12 +42,12 @@ CloudFront -> HTTPS Front Door -> HTTP Application Gateway -> AKS
 
 ## Front Door를 상시 유지하는 이유
 
-Blob endpoint도 HTTPS를 제공하므로 HTTPS만이 유일한 이유는 아니다.
+Front Door는 Azure DR Origin의 HTTPS 접속 문제를 해결하기 위해 도입했다. 현재 Application Gateway가 IP 기반 HTTP listener를 사용하므로 Front Door가 CloudFront용 관리형 TLS hostname과 고정 HTTPS endpoint를 제공한다. 개인 도메인의 사용자 TLS는 CloudFront의 ACM 인증서가 처리한다.
 
-- 장애 전에 검증된 HTTPS 점검 경로 확보
-- CloudFront Azure Origin hostname 고정
-- Blob과 App Gateway backend 전환점 통일
-- 장애 중 Front Door 신규 배포와 DNS 변경 방지
+- 장애 전에 인증서와 HTTPS 점검 경로 검증
+- CloudFront Azure HTTPS Origin hostname 고정
+- Blob과 Application Gateway backend 전환점 통일
+- 장애 중 Front Door 신규 배포, 인증서 설정과 DNS 변경 방지
 
 ## 배포
 

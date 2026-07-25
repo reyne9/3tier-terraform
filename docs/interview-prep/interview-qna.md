@@ -30,7 +30,7 @@ CloudFront Origin Failover는 GET, HEAD, OPTIONS 요청에만 secondary failover
 
 ## Front Door를 왜 평상시에도 유지하나요?
 
-Blob 기본 endpoint도 HTTPS를 지원하므로 HTTPS만이 유일한 이유는 아닙니다. 장애 전에 검증된 HTTPS 점검 경로를 확보하고, CloudFront의 Azure Origin hostname을 고정하며, Blob과 Application Gateway 사이의 backend 전환점을 통일하기 위해 Front Door 비용을 평상시에도 부담합니다.
+Azure DR Origin의 HTTPS 접속 문제를 해결하기 위해 도입했습니다. 현재 Application Gateway는 IP 기반 HTTP listener이므로 CloudFront가 Azure Origin으로 연결할 TLS hostname과 HTTPS endpoint가 없습니다. Front Door가 `azurefd.net` 관리형 TLS endpoint를 제공하고, 개인 도메인의 사용자 HTTPS는 계속 CloudFront의 `us-east-1` ACM 인증서가 처리합니다. 평상시에는 점검 페이지를 제공하다가 전체 DR 시 Application Gateway backend로 전환하며, 장애 전에 이 HTTPS 경로를 검증해 두기 위해 비용이 들더라도 상시 배포합니다.
 
 ## 전체 Azure DR은 언제 전환하나요?
 

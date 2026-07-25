@@ -27,11 +27,25 @@ User
 
 CloudFront viewer는 HTTP 요청을 HTTPS로 리다이렉트한다. 현재 ALB Ingress listener가 HTTP 80이므로 CloudFront에서 ALB까지는 `http-only`다.
 
+## 개인 도메인, Route 53, ACM, CloudFront의 역할
+
+DR 전환 중에도 사용자가 접속하는 개인 도메인은 바뀌지 않는다.
+
+1. Route 53 Hosted Zone이 개인 도메인의 DNS를 관리한다.
+2. 개인 도메인의 A Alias 레코드는 항상 CloudFront Distribution을 가리킨다.
+3. CloudFront용 ACM 인증서는 `us-east-1`에 발급되어 개인 도메인의 HTTPS를 종료한다.
+4. 사용자의 HTTP 요청은 CloudFront에서 HTTPS로 리다이렉트된다.
+5. AWS 장애가 발생해도 Route 53 Alias와 ACM 인증서는 그대로 유지되고, CloudFront 내부 Origin 경로만 AWS ALB에서 Azure Front Door 쪽으로 바뀐다.
+
+따라서 자동 점검 페이지와 전체 Azure DR 모두 사용자는 같은 개인 도메인과 같은 CloudFront HTTPS 인증서를 사용한다. ACM 인증서를 Azure로 옮기거나 Route 53 레코드를 Front Door로 바꾸는 절차는 없다. Route 53 Health Check는 관측용이며 DNS Failover를 수행하지 않는다.
+
 ### 2. AWS 장애 직후: 자동 점검 페이지
 
 ```text
 User
-  -> HTTPS CloudFront
+  -> 개인 도메인
+  -> Route 53 A Alias
+  -> HTTPS CloudFront (ACM, us-east-1)
   -> Origin Group
   -> AWS ALB 실패
   -> HTTPS Azure Front Door
@@ -65,8 +79,9 @@ CloudFront Origin Failover는 쓰기 method를 Secondary로 장애 조치하지 
 
 ```text
 User
-  -> Route 53 Alias
-  -> CloudFront (azure_dr, all methods)
+  -> 개인 도메인
+  -> Route 53 A Alias
+  -> HTTPS CloudFront (ACM, us-east-1, azure_dr, all methods)
   -> HTTPS Azure Front Door
   -> HTTP Application Gateway
   -> AKS Web/WAS
@@ -77,12 +92,14 @@ User
 
 ## Front Door를 상시 유지하는 이유
 
-Blob 기본 endpoint 자체도 HTTPS를 지원하므로 “HTTPS만을 위해 Front Door가 반드시 필요하다”는 설명은 정확하지 않다. 이 설계가 Front Door 비용을 평상시에도 부담하는 이유는 다음과 같다.
+Front Door를 도입한 직접적인 계기는 Azure DR Origin의 HTTPS 접속 문제를 해결하기 위해서다. 현재 Application Gateway는 IP 기반 HTTP listener를 사용하므로 CloudFront가 Azure Origin으로 연결할 TLS hostname과 HTTPS endpoint가 없다. Front Door가 `azurefd.net` 관리형 TLS endpoint를 제공하며, 개인 도메인의 사용자 HTTPS는 계속 CloudFront의 `us-east-1` ACM 인증서가 처리한다. 장애 중 새 인증서나 Edge 리소스를 구성하지 않도록 Front Door는 평상시에도 유지한다.
 
+- CloudFront에서 Azure로 이어지는 HTTPS Origin hostname을 고정한다.
 - 장애 전에 HTTPS 점검 페이지 경로를 검증해 둔다.
-- CloudFront의 Azure Origin hostname을 고정한다.
-- Blob 점검 페이지와 App Gateway/AKS 사이의 backend 전환점을 통일한다.
-- 장애 중 Front Door 신규 배포나 DNS/Origin 주소 교체를 피한다.
+- Blob 점검 페이지와 Application Gateway/AKS 사이의 backend 전환점을 통일한다.
+- 장애 중 인증서, Front Door 또는 DNS/Origin 주소를 새로 구성하지 않는다.
+
+Blob 기본 endpoint도 HTTPS를 제공하지만, Front Door 도입 목적은 Blob 한 개의 HTTPS 지원 여부가 아니라 점검 페이지와 전체 Azure 서비스가 동일한 HTTPS 진입점을 사용하도록 만드는 것이다.
 
 ## Azure 계층
 
