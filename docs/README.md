@@ -31,6 +31,7 @@ docs/
 ## Runbooks
 
 - [deployment-guide.md](runbooks/deployment-guide.md): AWS/Azure 인프라 배포 가이드
+- [end-to-end.md](runbooks/end-to-end.md): 새 환경 준비부터 운영·DR까지의 의존 순서
 - [dr-failover-procedure.md](runbooks/dr-failover-procedure.md): AWS 장애 시 DR 전환 절차
 - [DR_TEST_GUIDE.md](runbooks/DR_TEST_GUIDE.md): DR 테스트 가이드
 - [DESTROY_GUIDE.md](runbooks/DESTROY_GUIDE.md): 인프라 삭제 가이드

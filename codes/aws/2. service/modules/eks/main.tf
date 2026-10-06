@@ -232,6 +232,7 @@ resource "aws_eks_node_group" "was" {
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "vpc-cni"
+  configuration_values = jsonencode({ enableNetworkPolicy = "true" })
 }
 
 resource "aws_eks_addon" "kube_proxy" {

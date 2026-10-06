@@ -9,13 +9,12 @@ spec:
   description: "PetClinic Application Project for Azure"
 
   sourceRepos:
-    - 'https://github.com/c1oud9/petclinic-gitops.git'
-    - 'https://github.com/c1oud9/spring-petclinic.git'
+    - 'https://github.com/reyne9/3tier-terraform.git'
 
   destinations:
-    - namespace: petclinic
+    - namespace: web
       server: https://kubernetes.default.svc
-    - namespace: petclinic-staging
+    - namespace: was
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
@@ -67,18 +66,12 @@ spec:
   project: petclinic
 
   source:
-    repoURL: https://github.com/c1oud9/petclinic-gitops.git
+    repoURL: https://github.com/reyne9/3tier-terraform.git
     targetRevision: main
-    path: overlays/azure-prod
-
-    kustomize:
-      images:
-        - cloud039/petclinic-web:latest
-        - cloud039/petclinic-was:latest
+    path: codes/azure/2-emergency/k8s-manifests
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: petclinic
 
   syncPolicy:
     automated:

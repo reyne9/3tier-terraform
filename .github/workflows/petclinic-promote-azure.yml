@@ -1,0 +1,55 @@
+name: Promote PetClinic to Azure DR
+
+on:
+  workflow_dispatch:
+    inputs:
+      restored_and_checked:
+        description: 'Azure MySQL restore and read/write checks completed'
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+  promote:
+    if: inputs.restored_and_checked == true
+    runs-on: ubuntu-latest
+    environment: azure-dr
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Copy current AWS image version to Azure manifests
+        env:
+          REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          test -n "$REGISTRY_USER" || { echo 'Set DOCKERHUB_USERNAME.' >&2; exit 1; }
+          IMAGE_TAG=$(python3 - <<'PY'
+          import pathlib, re
+          source = pathlib.Path('codes/aws/2. service/k8s-manifests/was/deployment.yaml').read_text()
+          match = re.search(r'image:\s*\S+/petclinic-was:([a-f0-9]{40})', source)
+          if not match:
+              raise SystemExit('AWS WAS image does not have a published SHA tag')
+          print(match.group(1))
+          PY
+          )
+          python3 scripts/update-image-tags.py azure "$REGISTRY_USER" "$IMAGE_TAG"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add codes/azure/2-emergency/k8s-manifests/web/deployment.yaml codes/azure/2-emergency/k8s-manifests/was/deployment.yaml
+          git commit -m "Promote PetClinic ${IMAGE_TAG} to Azure DR [skip ci]"
+          git push origin HEAD:main
+      - name: Check Azure application route after Argo CD sync
+        env:
+          APP_URL: ${{ vars.AZURE_APP_URL }}
+        run: |
+          test -n "$APP_URL" || { echo 'Set AZURE_APP_URL.' >&2; exit 1; }
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 10 "${APP_URL%/}/vets.html" >/dev/null; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo 'Azure application route did not become healthy within 10 minutes.' >&2
+          exit 1

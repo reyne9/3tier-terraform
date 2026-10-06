@@ -4,7 +4,7 @@ AWS에서 Spring PetClinic을 운영하고, 장애 시 Azure에서 서비스를 
 
 > **검증 범위** 2026년 10월 현재 이 저장소에서 확인한 것은 오프라인 회귀 테스트와 코드·설정의 정합성입니다. 이번 통합본으로 AWS/Azure를 새로 배포하거나 실제 장애 전환 시간을 측정하지 않았습니다. 과거 배포 기록은 [코드 검증 기록](docs/runbooks/code-validation.md)과 구분해서 읽어 주세요.
 
-**재현 가능 범위:** 이 저장소에서 PetClinic 소스, Terraform, Kubernetes 매니페스트, 운영 스크립트를 확인하고 로컬 테스트와 이미지 빌드를 실행할 수 있습니다. 클라우드 설치에는 AWS/Azure 계정, 도메인·인증서, 자격 증명, 이미지 레지스트리와 환경별 설정이 필요합니다. 현재 자동 실행되는 CI는 테스트와 이미지 빌드까지이며, 레지스트리 푸시·GitOps 동기화·클라우드 배포는 연결되어 있지 않습니다. [PPT 및 구현 대조표](docs/overview/portfolio-claim-check.md)에 차이를 정리했습니다.
+**재현 가능 범위:** 이 저장소에 PetClinic 예약 소스, Terraform, Kubernetes 매니페스트, 운영 스크립트와 이미지 게시·GitOps 워크플로를 모았습니다. [처음부터 운영까지의 순서](docs/runbooks/end-to-end.md)에 필요한 계정·도메인·인증서·비밀정보와 실행 순서를 적었습니다. 기존에 성공한 CI는 테스트와 이미지 빌드까지입니다. 새 이미지 게시와 클라우드 배포 흐름은 구성했지만 아직 실제 계정에서 실행하지 않았습니다. [PPT 및 구현 대조표](docs/overview/portfolio-claim-check.md)에 근거 수준을 정리했습니다.
 
 ## 요청 경로와 DR 방식
 
@@ -51,12 +51,13 @@ docker build -f Dockerfile.was -t petclinic-was:local .
 docker build -f Dockerfile.web -t petclinic-web:local .
 ```
 
-[GitHub Actions 검증 워크플로](.github/workflows/petclinic-verify.yml)는 애플리케이션 변경 시 테스트와 두 이미지의 빌드를 실행하도록 구성했습니다. `codes/*/4-cicd/`의 배포 예시는 GitHub Actions 실행 경로 밖에 있으며, 실제 배포 성공의 증거로 취급하지 않습니다.
+[검증 워크플로](.github/workflows/petclinic-verify.yml)는 테스트와 이미지 빌드를 수행합니다. [배포 워크플로](.github/workflows/petclinic-delivery.yml)는 설정을 활성화하면 Maven, Trivy, Buildx, Docker Hub, 같은 저장소의 매니페스트 갱신, Argo CD 자동 동기화, HTTP 확인 순서로 이어집니다. Azure DR 이미지는 [수동 승격 워크플로](.github/workflows/petclinic-promote-azure.yml)로 별도 관리합니다. 새 배포 흐름의 성공 여부는 아직 확인하지 않았습니다.
 
 ## 문서
 
 - [현재 구현 기준 아키텍처](docs/architecture/current-implementation.md): 실제 코드의 요청 경로와 DR 전환 조건
 - [소스 통합 기록](docs/overview/source-integration.md): PetClinic 원본 커밋과 통합 범위
+- [처음부터 운영까지](docs/runbooks/end-to-end.md): 준비, 배포, 이미지 게시, 운영, DR 순서
 - [PPT 및 구현 대조표](docs/overview/portfolio-claim-check.md): 슬라이드의 주장과 실제 코드·검증 범위
 - [코드 검증 기록](docs/runbooks/code-validation.md): 수정 내역, 테스트 범위, 배포 전 점검 항목
 - [배포 가이드](docs/runbooks/deployment-guide.md): AWS·Azure 인프라 설정 순서

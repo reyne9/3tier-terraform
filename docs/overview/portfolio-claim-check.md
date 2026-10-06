@@ -1,20 +1,15 @@
-# 포트폴리오 PPT와 구현 범위 대조
+# 포트폴리오 PPT와 저장소 대조
 
-대조 대상: `포트폴리오_김창주_2.pptx`(2026-09-20 수정본)와 이 저장소의 2026-10-06 `main`. 이 표는 슬라이드의 기술 설명이 저장소에서 재현되거나 검증되는지를 구분합니다. 발표 당시의 별도 환경에서 수행한 작업까지 부정하는 의미는 아닙니다.
+대조 대상은 `포트폴리오_김창주_2.pptx`와 이 저장소입니다. 코드를 구성했다는 사실과 실제 클라우드에서 실행했다는 증거를 구분합니다. 이전 별도 환경의 작업을 부정하는 기록은 아닙니다.
 
-| PPT 내용 | 저장소에서 확인한 내용 | 발표·문서에서 필요한 구분 |
+| PPT 내용 | 저장소 구현·설계 | 증거 수준 |
 | --- | --- | --- |
-| 4~7, 10쪽: AWS Web/WAS/RDS와 Azure DR 경로 | Terraform, Kubernetes 매니페스트, 전환 스크립트가 있음. 2026-10-06 오프라인 검사 통과 | 이번 통합본의 AWS/Azure 실제 배포와 전체 장애 전환은 미검증 |
-| 3, 8쪽: 5분 내 점검 페이지, 24시간 RPO | CloudFront의 읽기 요청 Origin Failover와 일일 dump 구성이 있음 | 5분 전환 및 24시간 RPO 실측값은 없음. 목표 또는 검증 항목으로 표현 |
-| 3, 9, 15쪽: 진료 가능 시간 확인, 예약일 검증, 예약 저장 | 포함된 Spring PetClinic은 `Visit` 등록 POST와 설명 필드의 빈 값 검증을 구현. 날짜는 기본적으로 당일로 설정 | 진료 가능 시간 조회·시간대 예약·예약일 유효성 검증을 구현했다고 말할 수 없음. 방문 기록 등록으로 표현하거나 별도 구현 필요 |
-| 18쪽: Maven → Trivy → Buildx → Docker Hub → 매니페스트 갱신 → Argo CD → 스모크 테스트 | 실제 `.github/workflows/petclinic-verify.yml`은 Maven 검증과 로컬 Docker 이미지 빌드까지 실행. `codes/*/4-cicd/`의 배포 워크플로는 예시이며 활성 Actions 경로에 없음 | 전체 파이프라인을 현재 자동 배포로 설명하면 불일치. 예시 설계와 실행된 CI를 분리 |
-| 19쪽: Azure MySQL 복원 후 조회·신규 저장 확인 | 복원 스크립트와 운영 절차가 있음. 복원 뒤 테이블 존재 확인은 코드에 있음 | 실제 데이터의 조회·신규 저장 검증과 RTO/RPO 측정 결과는 별도 증거 필요 |
+| 3, 9, 15쪽: 진료 가능 시간 확인과 예약 저장 | `spring-petclinic`에 수의사·날짜별 빈 시간 조회, 예약 POST, 날짜·시간·설명 검증, 같은 수의사 시간 중복 방지 DB 제약을 추가 | 코드 구성. 평일 09:00~17:00 고정 시간대이며 수의사별 근무표·휴무일은 없음. 새 통합본의 클라우드 실행은 미확인 |
+| 4~7, 10쪽: AWS Web/WAS/RDS와 Azure DR | Terraform, Web/WAS 매니페스트, 백업·복원·전환 스크립트 포함 | Terraform 오프라인 검사 기록 있음. 새 통합본의 AWS/Azure 실제 배포는 미확인 |
+| 3, 8쪽: 5분 내 점검 페이지와 24시간 RPO | CloudFront 읽기 요청 Origin Failover, 일일 dump와 Azure Blob 보관 설계 | 목표 수치. 전환 시간과 최종 복구 시각 실측 없음 |
+| 16쪽: HPA와 Karpenter | Web/WAS CPU HPA 매니페스트를 추가. EKS는 관리형 노드 그룹의 최소·최대 크기를 설정하지만 Karpenter는 설치하지 않음 | HPA는 metrics-server와 클러스터 실행이 필요. Karpenter 표기는 PPT에서 수정 필요 |
+| 18쪽: Maven → Trivy → Buildx → Docker Hub → Git 매니페스트 → Argo CD → 스모크 테스트 | `petclinic-delivery.yml`과 같은 저장소를 추적하는 Argo CD Application을 추가. Docker Hub·GitHub Environment·앱 URL을 설정해야 게시 단계 실행 | 이전 성공 CI는 Maven 테스트·이미지 빌드까지. 새 전달 흐름의 실제 실행은 미확인 |
+| 20~21쪽: NetworkPolicy, CloudFront만 ALB 접근, CSI | WAS ingress NetworkPolicy와 EKS VPC CNI 정책 설정을 추가. CloudFront 전용 ALB 접근 제어와 Secrets Store CSI는 구현되지 않음. DB 자격 증명은 별도 Kubernetes Secret, 백업 EC2 자격 증명은 Secrets Manager 사용 | PPT의 CloudFront 전용 접근 및 CSI 표기는 수정 필요 |
+| 19쪽: Azure MySQL 복원 후 조회·신규 저장 | 복원 절차, Azure 승격 워크플로, 앱 경로 확인이 있음 | 실제 데이터 조회·신규 예약 저장 및 RTO/RPO 측정은 실행 기록 필요 |
 
-## 제3자가 재현할 때 필요한 것
-
-1. [README](../../README.md)의 로컬 검사로 애플리케이션과 IaC의 검증 범위를 확인합니다.
-2. [코드 검증 기록](../runbooks/code-validation.md)의 순서대로 Azure 상시 계층, AWS 서비스·엣지·모니터링을 준비합니다. AWS/Azure 계정, 비용 한도, DNS·ACM 인증서, 자격 증명, 이미지 레지스트리 접근은 각자 마련해야 합니다.
-3. 매니페스트의 `cloud039/petclinic-*` 태그는 과거 이미지 참조입니다. 이 저장소에서 빌드한 이미지로 운영하려면 새 태그를 레지스트리에 게시하고 매니페스트를 갱신한 뒤 실제 환경에서 배포·검증해야 합니다.
-4. [CI/CD 예시의 상태](../../codes/aws/4-cicd/README.md)를 확인합니다. GitOps 설정에는 이 저장소 밖의 `c1oud9/petclinic-gitops`가 남아 있어, 현 상태로는 이 저장소 하나만으로 자동 배포가 완결되지 않습니다.
-
-이 문서는 PPT와 구현이 완전히 일치한다는 증명서가 아닙니다. 위 차이를 PPT 문구에 반영하거나 해당 기능을 구현하고 실제 환경에서 검증한 뒤 다시 대조해야 합니다.
+[처음부터 운영까지의 순서](../runbooks/end-to-end.md)는 제3자가 각 계정에 맞게 준비할 입력과 작업 순서를 설명합니다. 실제 배포 전에는 Terraform plan, 이미지 게시, Argo CD 동기화, 앱 조회·쓰기와 복원 결과를 확인해야 합니다.

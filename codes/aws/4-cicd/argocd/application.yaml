@@ -9,7 +9,7 @@ spec:
   description: "Petclinic Application Project"
 
   sourceRepos:
-    - '*'
+    - 'https://github.com/reyne9/3tier-terraform.git'
 
   destinations:
     - namespace: web
@@ -39,7 +39,7 @@ spec:
   project: petclinic
 
   source:
-    repoURL: https://github.com/cloud039/3tier-terraform.git
+    repoURL: https://github.com/reyne9/3tier-terraform.git
     targetRevision: main
     path: codes/aws/2. service/k8s-manifests
 

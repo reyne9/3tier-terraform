@@ -1,0 +1,119 @@
+name: PetClinic delivery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'spring-petclinic/**'
+      - '.github/workflows/petclinic-delivery.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: petclinic-delivery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: spring-petclinic/pom.xml
+      - name: Maven test and package
+        run: ./mvnw -B verify
+        working-directory: spring-petclinic
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: spring-petclinic
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  publish:
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_DELIVERY == 'true'
+    needs: build-test-scan
+    runs-on: ubuntu-latest
+    environment: aws-production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check registry configuration
+        env:
+          REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          test -n "$REGISTRY_USER" && test -n "$REGISTRY_TOKEN" || {
+            echo 'Configure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN before enabling delivery.' >&2
+            exit 1
+          }
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push WAS
+        uses: docker/build-push-action@v7
+        with:
+          context: spring-petclinic
+          file: spring-petclinic/Dockerfile.was
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic-was:${{ github.sha }}
+      - name: Build and push Web
+        uses: docker/build-push-action@v7
+        with:
+          context: spring-petclinic
+          file: spring-petclinic/Dockerfile.web
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic-web:${{ github.sha }}
+
+  update-gitops:
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_DELIVERY == 'true'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Commit AWS image versions
+        env:
+          REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          python3 scripts/update-image-tags.py aws "$REGISTRY_USER" "$IMAGE_TAG"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'codes/aws/2. service/k8s-manifests/web/deployment.yaml' 'codes/aws/2. service/k8s-manifests/was/deployment.yaml'
+          git commit -m "Deploy PetClinic images ${IMAGE_TAG} [skip ci]"
+          git push origin HEAD:main
+
+  smoke-test:
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_DELIVERY == 'true'
+    needs: update-gitops
+    runs-on: ubuntu-latest
+    environment: aws-production
+    steps:
+      - name: Wait for Argo CD rollout and check Web-to-WAS route
+        env:
+          APP_URL: ${{ vars.AWS_APP_URL }}
+        run: |
+          test -n "$APP_URL" || { echo 'Set AWS_APP_URL.' >&2; exit 1; }
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 10 "${APP_URL%/}/vets.html" >/dev/null; then
+              echo 'Application route responds.'
+              exit 0
+            fi
+            sleep 20
+          done
+          echo 'Application route did not become healthy within 10 minutes.' >&2
+          exit 1
