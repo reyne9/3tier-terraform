@@ -1,6 +1,6 @@
 # Terraform 수정 및 검증 기록
 
-> 2026-10-06 재검증: Terraform 1.14.0에서 5개 root의 `fmt -check`와 `validate`, mock `terraform test` 9건이 통과했다. Python 오프라인 회귀 테스트 10건도 통과했다. 실제 AWS/Azure `apply`와 PetClinic 이미지 빌드·배포는 이번 검증에 포함하지 않았다.
+> 2026-10-06 재검증: Terraform 1.14.0에서 5개 root의 `fmt -check`와 `validate`, mock `terraform test` 9건이 통과했다. Python 오프라인 회귀 테스트 10건도 통과했다. [GitHub Actions 실행](https://github.com/reyne9/3tier-terraform/actions/runs/37476071052)에서는 Maven 테스트와 Web/WAS 이미지 빌드가 통과했다. 실제 AWS/Azure `apply`, 이미지 레지스트리 푸시와 클라우드 배포는 이번 검증에 포함하지 않았다.
 
 2026-09-22에 기존 AWS Primary / Azure Backup & Restore 구성을 기준으로 수정했습니다. 기능 확장 대신 최초 배포, 정상 요청, 백업·복원, 모니터링을 막는 코드 문제를 처리했습니다. 실제 AWS/Azure apply는 실행하지 않았습니다.
 
