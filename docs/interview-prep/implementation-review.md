@@ -179,12 +179,12 @@ AWS WAS 구성:
 Azure WAS 구성:
 
 - Deployment 구조는 AWS와 유사
-- `was-service`가 `LoadBalancer`로 되어 있는 파일이 있음
-- App Gateway backend pool에 AKS backend IP를 연결하는 흐름과 섞여 있다
+- `web-service`는 `LoadBalancer`(80), `was-service`는 `ClusterIP`(8080)
+- App Gateway backend pool에는 Web LoadBalancer IP를 연결한다. 배포 스크립트가 IP를 조회해 Terraform에 전달한다.
 
 면접 주의:
 
-> Azure DR 쪽은 Application Gateway와 AKS Service/Ingress 연결을 실험한 흔적이 있습니다. 최종 설명에서는 “App Gateway를 DR 진입점으로 두고 AKS Web/WAS로 라우팅하는 구조”라고 말하되, 세부 구현에서는 backend IP를 수동 또는 스크립트로 보정해야 하는 부분이 있었다고 설명하는 것이 안전합니다.
+> Azure DR은 Application Gateway → Web LoadBalancer → WAS ClusterIP 경로로 설명합니다. 최초 Terraform apply에서 Gateway backend는 비어 있고, Web 배포 후 스크립트가 IP를 조회해 다시 적용합니다. 실제 클라우드 연결과 쓰기 검증은 별도로 확인해야 합니다.
 
 ## 5. AWS ALB와 Ingress
 

@@ -4,11 +4,11 @@ AWS/Azure 멀티클라우드 Backup & Restore DR 솔루션의 문서를 목적�
 
 ## 빠른 시작
 
-- [프로젝트 포트폴리오 보고서](/docs/overview/PORTFOLIO_REPORT.md): 프로젝트 배경, 아키텍처, 기술 선택, 성과 정리
-- [면접 대비 패키지](/docs/interview-prep/README.md): 기초 복습, 구현 상세, Q&A, 포트폴리오 다이어그램
-- [배포 가이드](/docs/runbooks/deployment-guide.md): AWS Primary와 Azure DR 인프라 배포 순서
-- [DR 전환 절차](/docs/runbooks/dr-failover-procedure.md): AWS 장애 시 Azure로 복구하는 실행 절차
-- [트러블슈팅](/docs/runbooks/troubleshooting.md): 배포와 운영 중 자주 만나는 문제 해결
+- [프로젝트 포트폴리오 보고서](overview/PORTFOLIO_REPORT.md): 프로젝트 배경, 아키텍처, 기술 선택, 성과 정리
+- [면접 대비 패키지](interview-prep/README.md): 기초 복습, 구현 상세, Q&A, 포트폴리오 다이어그램
+- [배포 가이드](runbooks/deployment-guide.md): AWS Primary와 Azure DR 인프라 배포 순서
+- [DR 전환 절차](runbooks/dr-failover-procedure.md): AWS 장애 시 Azure로 복구하는 실행 절차
+- [트러블슈팅](runbooks/troubleshooting.md): 배포와 운영 중 자주 만나는 문제 해결
 
 ## 문서 구조
 
@@ -23,36 +23,36 @@ docs/
 
 ## Overview
 
-- [PORTFOLIO_REPORT.md](/docs/overview/PORTFOLIO_REPORT.md): 전체 프로젝트 리포트
-- [petclinic-web-was-separation.md](/docs/overview/petclinic-web-was-separation.md): PetClinic Web/WAS 분리 배경과 구조
+- [PORTFOLIO_REPORT.md](overview/PORTFOLIO_REPORT.md): 전체 프로젝트 리포트
+- [petclinic-web-was-separation.md](overview/petclinic-web-was-separation.md): PetClinic Web/WAS 분리 배경과 구조
 
 ## Runbooks
 
-- [deployment-guide.md](/docs/runbooks/deployment-guide.md): AWS/Azure 인프라 배포 가이드
-- [dr-failover-procedure.md](/docs/runbooks/dr-failover-procedure.md): AWS 장애 시 DR 전환 절차
-- [DR_TEST_GUIDE.md](/docs/runbooks/DR_TEST_GUIDE.md): DR 테스트 가이드
-- [DESTROY_GUIDE.md](/docs/runbooks/DESTROY_GUIDE.md): 인프라 삭제 가이드
-- [troubleshooting.md](/docs/runbooks/troubleshooting.md): 종합 트러블슈팅
+- [deployment-guide.md](runbooks/deployment-guide.md): AWS/Azure 인프라 배포 가이드
+- [dr-failover-procedure.md](runbooks/dr-failover-procedure.md): AWS 장애 시 DR 전환 절차
+- [DR_TEST_GUIDE.md](runbooks/DR_TEST_GUIDE.md): DR 테스트 가이드
+- [DESTROY_GUIDE.md](runbooks/DESTROY_GUIDE.md): 인프라 삭제 가이드
+- [troubleshooting.md](runbooks/troubleshooting.md): 종합 트러블슈팅
 
 ## Architecture
 
-- [current-implementation.md](/docs/architecture/current-implementation.md): 실제 코드 기준 단계형 CloudFront→Front Door DR 경로
-- [FAILOVER_CONFIGURATION.md](/docs/architecture/FAILOVER_CONFIGURATION.md): CloudFront와 Front Door Failover 설정
-- [route53-health-check-guide.md](/docs/architecture/route53-health-check-guide.md): Route53 헬스체크와 CloudFront 구성
-- [security-architecture.md](/docs/architecture/security-architecture.md): WAF, OIDC, 암호화 중심 보안 설계
-- [infra-details-aws-route53.md](/docs/architecture/infra-details-aws-route53.md): AWS Route53 및 CloudFront
-- [infra-details-aws-service.md](/docs/architecture/infra-details-aws-service.md): AWS VPC, EKS, RDS
-- [infra-details-aws-monitoring.md](/docs/architecture/infra-details-aws-monitoring.md): AWS 모니터링과 병목 감지
-- [infra-details-aws-cicd.md](/docs/architecture/infra-details-aws-cicd.md): CI/CD 파이프라인
-- [infra-details-azure-always.md](/docs/architecture/infra-details-azure-always.md): Azure 상시 대기 인프라
-- [infra-details-azure-emergency.md](/docs/architecture/infra-details-azure-emergency.md): Azure 재해 복구 인프라
+- [current-implementation.md](architecture/current-implementation.md): 실제 코드 기준 단계형 CloudFront→Front Door DR 경로
+- [FAILOVER_CONFIGURATION.md](architecture/FAILOVER_CONFIGURATION.md): CloudFront와 Front Door Failover 설정
+- [route53-health-check-guide.md](architecture/route53-health-check-guide.md): Route53 헬스체크와 CloudFront 구성
+- [security-architecture.md](architecture/security-architecture.md): 구현된 보안 제어와 개선 과제
+- [infra-details-aws-route53.md](architecture/infra-details-aws-route53.md): AWS Route53 및 CloudFront
+- [infra-details-aws-service.md](architecture/infra-details-aws-service.md): AWS VPC, EKS, RDS
+- [infra-details-aws-monitoring.md](architecture/infra-details-aws-monitoring.md): AWS 모니터링과 병목 감지
+- [infra-details-aws-cicd.md](architecture/infra-details-aws-cicd.md): CI/CD 파이프라인
+- [infra-details-azure-always.md](architecture/infra-details-azure-always.md): Azure 상시 대기 인프라
+- [infra-details-azure-emergency.md](architecture/infra-details-azure-emergency.md): Azure 재해 복구 인프라
 
 ## Interview Prep
 
-- [basic-review.md](/docs/interview-prep/basic-review.md): 기초 개념부터 다시 보는 면접 복습 자료
-- [implementation-review.md](/docs/interview-prep/implementation-review.md): 실제 Terraform 구현 기준 상세 복습
-- [interview-qna.md](/docs/interview-prep/interview-qna.md): 면접 질문/답변 카드
-- [architecture-slides/](/docs/interview-prep/architecture-slides/): 포트폴리오용 아키텍처 다이어그램
+- [basic-review.md](interview-prep/basic-review.md): 기초 개념부터 다시 보는 면접 복습 자료
+- [implementation-review.md](interview-prep/implementation-review.md): 실제 Terraform 구현 기준 상세 복습
+- [interview-qna.md](interview-prep/interview-qna.md): 면접 질문/답변 카드
+- [architecture-slides/](interview-prep/architecture-slides/): 포트폴리오용 아키텍처 다이어그램
 
 ## 문서 관리 원칙
 

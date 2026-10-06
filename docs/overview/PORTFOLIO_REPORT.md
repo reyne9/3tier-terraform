@@ -26,7 +26,7 @@ CloudFront Origin Group
   -> Azure Blob Static Website
 ```
 
-Front Door는 Azure `1-always`에서 상시 배포된다. maintenance mode에서는 HTTPS Blob Origin만 활성화한다. CloudFront의 `GET/HEAD`는 연결 실패나 `500/502/503/504`에 따라 자동 전환된다.
+Front Door는 Azure `1-always`에서 상시 배포된다. maintenance mode에서는 HTTPS Blob Origin만 활성화한다. CloudFront의 `GET/HEAD/OPTIONS`는 연결 실패나 `500/502/503/504`에 따라 자동 전환된다.
 
 점검 페이지는 입력 기능이 없는 정적 페이지다. CloudFront Origin Failover가 POST/PUT 같은 쓰기 요청을 secondary로 보내지 않는다는 제약과 일치한다.
 
@@ -66,7 +66,6 @@ Blob endpoint 자체도 HTTPS를 제공하지만, 점검 페이지와 전체 Azu
 
 ### AWS
 
-- `codes/aws/1. network`
 - `codes/aws/2. service`
 - `codes/aws/1. route53`
 - `codes/aws/3. monitoring`

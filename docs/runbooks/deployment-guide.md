@@ -477,7 +477,7 @@ sudo sed -i 's/--single-transaction/--single-transaction --set-gtid-purged=OFF/g
 sudo /usr/local/bin/mysql-backup-to-azure.sh
 ```
 
-자세한 내용은 [troubleshooting.md](/docs/runbooks/troubleshooting.md#72-mysqldump-권한-오류-rds) 참조
+자세한 내용은 [troubleshooting.md](troubleshooting.md#72-mysqldump-권한-오류-rds) 참조
 
 ### 4. Web Pod Nginx 502 Bad Gateway
 
@@ -581,7 +581,7 @@ terraform output backup_instance_id
 
 ## 참고 문서
 
-- [Troubleshooting Guide](/docs/runbooks/troubleshooting.md)
+- [Troubleshooting Guide](troubleshooting.md)
 - [AWS Load Balancer Controller 공식 문서](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
 - [EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)
 
