@@ -7,7 +7,7 @@ metadata:
     app: was-spring
     tier: was
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: was-spring
     tier: was

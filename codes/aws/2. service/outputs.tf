@@ -120,22 +120,22 @@ output "rds_availability_zone" {
 
 output "backup_instance_id" {
   description = "백업 인스턴스 ID"
-  value       = aws_instance.backup_instance.id
+  value       = try(aws_instance.backup_instance[0].id, "disabled")
 }
 
 output "backup_instance_private_ip" {
   description = "백업 인스턴스 Private IP"
-  value       = aws_instance.backup_instance.private_ip
+  value       = try(aws_instance.backup_instance[0].private_ip, "disabled")
 }
 
 output "backup_instance_availability_zone" {
   description = "백업 인스턴스 가용영역"
-  value       = aws_instance.backup_instance.availability_zone
+  value       = try(aws_instance.backup_instance[0].availability_zone, "disabled")
 }
 
 output "backup_instance_ssh_command" {
   description = "SSM Session Manager 접속 명령어"
-  value       = "aws ssm start-session --target ${aws_instance.backup_instance.id}"
+  value       = "aws ssm start-session --target ${try(aws_instance.backup_instance[0].id, "disabled")}"
 }
 
 output "backup_logs_command" {
@@ -198,10 +198,10 @@ output "deployment_summary" {
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   💾 백업 시스템 (Plan B)
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  인스턴스 ID: ${aws_instance.backup_instance.id}
-  Private IP: ${aws_instance.backup_instance.private_ip}
-  Availability Zone: ${aws_instance.backup_instance.availability_zone}
-  ✅ Same AZ as RDS: ${aws_instance.backup_instance.availability_zone == module.rds.db_availability_zone ? "YES" : "NO"}
+  인스턴스 ID: ${try(aws_instance.backup_instance[0].id, "disabled")}
+  Private IP: ${try(aws_instance.backup_instance[0].private_ip, "disabled")}
+  Availability Zone: ${try(aws_instance.backup_instance[0].availability_zone, "disabled")}
+  ✅ Same AZ as RDS: ${try(aws_instance.backup_instance[0].availability_zone, "disabled") == module.rds.db_availability_zone ? "YES" : "NO"}
   
   백업 설정:
     - 주기: 5분마다
@@ -211,7 +211,7 @@ output "deployment_summary" {
       * Container: ${var.azure_backup_container_name}
   
   접속:
-    aws ssm start-session --target ${aws_instance.backup_instance.id}
+    aws ssm start-session --target ${try(aws_instance.backup_instance[0].id, "disabled")}
   
   로그 확인:
     sudo tail -f /var/log/mysql-backup-to-azure.log
@@ -232,14 +232,19 @@ output "deployment_summary" {
      kubectl get nodes
   
   3. AWS Load Balancer Controller 설치:
-     cd k8s-manifests/scripts
-     ./install-lb-controller.sh
+     bash scripts/install-lb-controller.sh
   
   4. 애플리케이션 배포:
-     ./deploy-app.sh
+     kubectl apply -f k8s-manifests/namespaces.yaml
+     kubectl apply -f k8s-manifests/was/
+     kubectl apply -f k8s-manifests/web/
+     kubectl apply -f k8s-manifests/ingress/
+
+  5. Ingress ALB 확인:
+     kubectl get ingress -n web
   
-  5. 백업 확인:
-     aws ssm start-session --target ${aws_instance.backup_instance.id}
+  6. 백업 확인:
+     aws ssm start-session --target ${try(aws_instance.backup_instance[0].id, "disabled")}
      sudo tail -f /var/log/mysql-backup-to-azure.log
   
   
@@ -250,12 +255,13 @@ output "quick_commands" {
   description = "자주 사용하는 명령어"
   value = {
     kubectl_setup  = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
-    backup_ssh     = "aws ssm start-session --target ${aws_instance.backup_instance.id}"
+    backup_ssh     = "aws ssm start-session --target ${try(aws_instance.backup_instance[0].id, "disabled")}"
     backup_logs    = "sudo tail -f /var/log/mysql-backup-to-azure.log"
     rds_connection = "mysql -h ${module.rds.db_instance_address} -u ${var.db_username} -p"
     check_nodes    = "kubectl get nodes"
     check_pods     = "kubectl get pods -A"
     check_ingress  = "kubectl get ingress -A"
+    ingress_alb    = "kubectl get ingress web-ingress -n web -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'"
   }
 }
 

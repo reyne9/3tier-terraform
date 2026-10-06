@@ -42,13 +42,13 @@ variable "eks_cluster_name" {
 }
 
 variable "alb_dns_name" {
-  description = "AWS ALB DNS 이름 (aws/service 배포 후 입력)"
+  description = "Ingress ALB DNS 이름. 비워 두면 eks_cluster_name 태그로 자동 조회"
   type        = string
   default     = ""
 }
 
 variable "alb_zone_id" {
-  description = "AWS ALB Hosted Zone ID (aws/service 배포 후 입력)"
+  description = "Ingress ALB Hosted Zone ID. 비워 두면 eks_cluster_name 태그로 자동 조회"
   type        = string
   default     = ""
 }

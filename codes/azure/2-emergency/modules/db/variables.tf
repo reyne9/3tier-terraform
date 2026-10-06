@@ -52,3 +52,8 @@ variable "admin_ip" {
   type        = string
   default     = ""
 }
+
+variable "aks_outbound_ip" {
+  description = "AKS에서 실제 사용하는 egress IPv4 주소"
+  type        = string
+}

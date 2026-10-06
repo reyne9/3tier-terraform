@@ -81,6 +81,7 @@ module "db" {
   mysql_sku        = var.mysql_sku
   mysql_storage_gb = var.mysql_storage_gb
   admin_ip         = var.admin_ip
+  aks_outbound_ip  = module.aks.outbound_ip_address
 
   tags = var.tags
 }

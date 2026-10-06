@@ -109,7 +109,7 @@ variable "eks_was_max_size" {
 variable "db_name" {
   description = "데이터베이스 이름"
   type        = string
-  default     = "bluebase01"
+  default     = "petclinic"
 }
 
 variable "db_username" {
@@ -202,8 +202,9 @@ variable "azure_subscription_id" {
 # =================================================
 
 variable "backup_instance_ssh_public_key" {
-  description = "백업 인스턴스 SSH 공개 키"
+  description = "선택 SSH 공개 키. 비워 두면 SSM으로 접속합니다."
   type        = string
+  default     = ""
 }
 
 variable "enable_backup_instance" {

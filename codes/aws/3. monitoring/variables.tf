@@ -141,7 +141,7 @@ variable "pod_restart_threshold" {
 # =================================================
 
 variable "surge_queue_threshold" {
-  description = "ALB Surge Queue 길이 임계값"
+  description = "ALB 거부된 연결 수 임계값 (기존 변수명 유지)"
   type        = number
   default     = 100
 }

@@ -34,3 +34,4 @@ kubectl
 $BACKUP_FILE.gx
 session-manager-plugin.deb
 dashboard.json
+combined.txt

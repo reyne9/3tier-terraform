@@ -96,9 +96,10 @@ module "rds" {
   allocated_storage     = var.rds_allocated_storage
   max_allocated_storage = var.rds_max_allocated_storage
 
-  multi_az            = var.rds_multi_az
-  skip_final_snapshot = var.rds_skip_final_snapshot
-  deletion_protection = var.rds_deletion_protection
+  backup_retention_period = var.rds_backup_retention
+  multi_az                = var.rds_multi_az
+  skip_final_snapshot     = var.rds_skip_final_snapshot
+  deletion_protection     = var.rds_deletion_protection
 
   # Enhanced Monitoring 활성화
   enhanced_monitoring_enabled = true

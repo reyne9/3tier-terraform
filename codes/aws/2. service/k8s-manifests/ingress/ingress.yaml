@@ -4,9 +4,11 @@ metadata:
   name: web-ingress
   namespace: web
   annotations:
+    # ALB는 Terraform에서 별도로 생성하지 않고 이 Ingress만으로 관리한다.
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/tags: Project=Multi-Cloud-DR,ManagedBy=AWS-Load-Balancer-Controller
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'

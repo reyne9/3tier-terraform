@@ -76,7 +76,7 @@ output "deployment_summary" {
 
   AKS 클러스터:
     - Name: ${module.aks.aks_cluster_name}
-    - Kubernetes: ${var.kubernetes_version}
+    - Kubernetes: ${coalesce(var.kubernetes_version, "Azure recommended")}
     - Web Nodes: ${var.web_node_count} (min: ${var.web_node_min_count}, max: ${var.web_node_max_count})
     - WAS Nodes: ${var.was_node_count} (min: ${var.was_node_min_count}, max: ${var.was_node_max_count})
     - VM Size: ${var.node_vm_size}
@@ -101,7 +101,7 @@ output "deployment_summary" {
 
     3. Kubernetes 리소스 배포
        cd scripts
-       ./deploy-petclinic.sh
+       ./deploy-complete.sh
 
     4. Application Gateway/AKS에서 읽기·쓰기 검증
 
@@ -132,4 +132,17 @@ output "deployment_summary" {
 
   ========================================
   EOT
+}
+
+output "mysql_username" {
+  value     = var.db_username
+  sensitive = true
+}
+
+output "storage_account_name" {
+  value = var.storage_account_name
+}
+
+output "backup_container_name" {
+  value = var.backup_container_name
 }

@@ -150,6 +150,7 @@ resource "aws_security_group_rule" "rds_from_backup" {
 # =================================================
 
 resource "aws_key_pair" "backup_instance" {
+  count      = var.backup_instance_ssh_public_key != "" ? 1 : 0
   key_name   = "backup-instance-key-${var.environment}"
   public_key = var.backup_instance_ssh_public_key
 
@@ -179,6 +180,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "backup_instance" {
+  count         = var.enable_backup_instance ? 1 : 0
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.small" # 2 vCPU, 2GB RAM
 
@@ -187,7 +189,7 @@ resource "aws_instance" "backup_instance" {
   availability_zone           = module.rds.db_availability_zone
   vpc_security_group_ids      = [aws_security_group.backup_instance.id]
   iam_instance_profile        = aws_iam_instance_profile.backup_instance.name
-  key_name                    = aws_key_pair.backup_instance.key_name
+  key_name                    = var.backup_instance_ssh_public_key != "" ? aws_key_pair.backup_instance[0].key_name : null
   associate_public_ip_address = false # Private 서브넷
 
   root_block_device {
@@ -196,16 +198,19 @@ resource "aws_instance" "backup_instance" {
     encrypted   = true
   }
 
+  user_data_replace_on_change = true
+
   user_data = templatefile("${path.module}/scripts/backup-init.sh", {
-    region                = var.aws_region
-    rds_endpoint          = module.rds.db_instance_endpoint
-    rds_address           = module.rds.db_instance_address
-    db_name               = var.db_name
-    db_username           = var.db_username
-    azure_storage_account = var.azure_storage_account_name
-    azure_container       = var.azure_backup_container_name
-    secret_arn            = aws_secretsmanager_secret.backup_credentials.arn
-    backup_cron           = var.backup_schedule_cron
+    config_b64 = base64encode(jsonencode({
+      region                = var.aws_region
+      rds_host              = module.rds.db_instance_address
+      db_name               = var.db_name
+      db_username           = var.db_username
+      azure_storage_account = var.azure_storage_account_name
+      azure_container       = var.azure_backup_container_name
+      secret_arn            = aws_secretsmanager_secret.backup_credentials.arn
+      backup_cron           = var.backup_schedule_cron
+    }))
   })
 
   tags = {
@@ -217,7 +222,11 @@ resource "aws_instance" "backup_instance" {
 
   depends_on = [
     module.rds,
-    aws_secretsmanager_secret_version.backup_credentials
+    module.vpc,
+    aws_secretsmanager_secret_version.backup_credentials,
+    aws_iam_role_policy.backup_instance,
+    aws_iam_role_policy_attachment.backup_ssm,
+    aws_security_group_rule.rds_from_backup
   ]
 }
 
@@ -256,6 +265,7 @@ resource "aws_secretsmanager_secret_version" "backup_credentials" {
 # =================================================
 
 resource "aws_cloudwatch_metric_alarm" "backup_instance_status" {
+  count               = var.enable_backup_instance ? 1 : 0
   alarm_name          = "backup-instance-status-${var.environment}"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
@@ -267,7 +277,7 @@ resource "aws_cloudwatch_metric_alarm" "backup_instance_status" {
   alarm_description   = "백업 인스턴스 상태 체크 실패"
 
   dimensions = {
-    InstanceId = aws_instance.backup_instance.id
+    InstanceId = aws_instance.backup_instance[0].id
   }
 
   alarm_actions = []
@@ -283,19 +293,19 @@ resource "aws_cloudwatch_metric_alarm" "backup_instance_status" {
 
 output "backup_summary" {
   description = "백업 설정 요약"
-  value       = <<-EOT
+  value = var.enable_backup_instance ? (<<-EOT
 
   ╔════════════════════════════════════════════════╗
   ║     Backup Instance (Plan B - Pilot Light)     ║
   ╚════════════════════════════════════════════════╝
 
   인스턴스:
-    - ID: ${aws_instance.backup_instance.id}
+    - ID: ${aws_instance.backup_instance[0].id}
     - Type: t3.small (2 vCPU, 2GB RAM)
-    - Private IP: ${aws_instance.backup_instance.private_ip}
-    - Availability Zone: ${aws_instance.backup_instance.availability_zone}
+    - Private IP: ${aws_instance.backup_instance[0].private_ip}
+    - Availability Zone: ${aws_instance.backup_instance[0].availability_zone}
     - RDS AZ: ${module.rds.db_availability_zone}
-    - ✅ Same AZ as RDS: ${aws_instance.backup_instance.availability_zone == module.rds.db_availability_zone ? "YES" : "NO"}
+    - ✅ Same AZ as RDS: ${aws_instance.backup_instance[0].availability_zone == module.rds.db_availability_zone ? "YES" : "NO"}
     - 비용: ~$15/월
   
   백업 설정:
@@ -308,12 +318,12 @@ output "backup_summary" {
     - S3: 미사용 (Plan B - 리전 독립)
   
   접속:
-    - SSM: aws ssm start-session --target ${aws_instance.backup_instance.id}
-    - SSH: ssh ubuntu@${aws_instance.backup_instance.private_ip} (Bastion 필요)
+    - SSM: aws ssm start-session --target ${aws_instance.backup_instance[0].id}
+    - SSH: ssh ubuntu@${aws_instance.backup_instance[0].private_ip} (Bastion 필요)
   
   모니터링:
     - 로그: sudo tail -f /var/log/mysql-backup-to-azure.log
-    - Cron: sudo crontab -l -u root
+    - Cron: sudo cat /etc/cron.d/mysql-backup
   
   Azure 백업 확인:
     az storage blob list \
@@ -322,7 +332,23 @@ output "backup_summary" {
       --output table
   
   주의: terraform.tfvars에서 backup_schedule_cron을 변경하면
-       terraform apply 후 인스턴스가 재시작됩니다.
+       terraform apply 후 백업 인스턴스가 교체되어 초기화 스크립트가 다시 실행됩니다.
   
   EOT
+  ) : "Backup instance disabled"
+}
+
+moved {
+  from = aws_instance.backup_instance
+  to   = aws_instance.backup_instance[0]
+}
+
+moved {
+  from = aws_cloudwatch_metric_alarm.backup_instance_status
+  to   = aws_cloudwatch_metric_alarm.backup_instance_status[0]
+}
+
+moved {
+  from = aws_key_pair.backup_instance
+  to   = aws_key_pair.backup_instance[0]
 }

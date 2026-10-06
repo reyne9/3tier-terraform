@@ -34,7 +34,7 @@ output "static_website_url" {
 
 output "static_website_endpoint" {
   description = "점검 페이지 접속 주소 (인터넷 공개)"
-  value       = "https://${azurerm_storage_account.backups.name}.z12.web.core.windows.net/"
+  value       = azurerm_storage_account.backups.primary_web_endpoint
 }
 
 output "vnet_id" {
@@ -101,13 +101,13 @@ output "deployment_summary" {
   Azure Front Door:
     - Endpoint: ${module.frontdoor.frontdoor_endpoint_hostname}
     - Backend Mode: ${var.frontdoor_backend_mode}
-    - Maintenance Origin: https://${var.storage_account_name}.z12.web.core.windows.net
+    - Maintenance Origin: ${azurerm_storage_account.backups.primary_web_endpoint}
     - Azure Service Origin: ${var.azure_appgw_ip != "" ? var.azure_appgw_ip : "Not configured yet"}
 
   Storage Account:
     - Name: ${azurerm_storage_account.backups.name}
     - 백업 Container: ${var.backup_container_name}
-    - 점검 페이지: https://${azurerm_storage_account.backups.name}.z12.web.core.windows.net/
+    - 점검 페이지: ${azurerm_storage_account.backups.primary_web_endpoint}
 
   네트워크 (예약됨):
     - VNet: ${azurerm_virtual_network.main.name} (${var.vnet_cidr})

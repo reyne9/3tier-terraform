@@ -31,7 +31,8 @@ traffic_mode                = "normal"
 - Secondary: `azure-frontdoor-dr`
 - Origin Group: `multi-cloud-failover-group`
 - Failover responses: 500, 502, 503, 504
-- Allowed methods: GET, HEAD
+- Allowed methods: GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE
+- 자동 Origin Failover 대상: GET, HEAD, OPTIONS. POST 등 쓰기는 정상 시 AWS로 전달하며 자동 failover하지 않습니다.
 
 ## Azure DR mode
 

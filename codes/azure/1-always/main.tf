@@ -359,7 +359,7 @@ module "frontdoor" {
   # maintenance: HTTPS Blob 점검 페이지
   # azure_service: Application Gateway -> AKS
   backend_mode    = var.frontdoor_backend_mode
-  azure_blob_fqdn = "${var.storage_account_name}.z12.web.core.windows.net"
+  azure_blob_fqdn = azurerm_storage_account.backups.primary_web_host
   azure_appgw_ip  = var.azure_appgw_ip
 
   # Custom Domain

@@ -58,12 +58,13 @@ User
 - Primary Origin: `primary-aws-alb`
 - Secondary Origin: `azure-frontdoor-dr`
 - Failover status: `500`, `502`, `503`, `504`
-- Normal mode methods: `GET`, `HEAD`
+- Normal mode methods: `GET`, `HEAD`, `OPTIONS`, `PUT`, `PATCH`, `POST`, `DELETE`
+- 자동 Origin Failover 대상: `GET`, `HEAD`, `OPTIONS`
 - Front Door mode: `maintenance`
 - Front Door forwarding protocol: `HttpsOnly`
 - Storage Account: `https_traffic_only_enabled = true`
 
-CloudFront Origin Failover는 쓰기 method를 Secondary로 장애 조치하지 않는다. 따라서 장애 순간의 `POST/PUT/PATCH/DELETE`는 실패할 수 있지만, 사용자가 새로고침하거나 다시 접속하는 일반 `GET` 요청은 자동으로 HTTPS 점검 페이지를 받는다.
+정상 운영에서는 POST 등 쓰기를 AWS로 전달한다. CloudFront Origin Failover는 쓰기 method를 Secondary로 장애 조치하지 않는다. 따라서 장애 순간의 `POST/PUT/PATCH/DELETE`는 실패할 수 있지만, 사용자가 새로고침하거나 다시 접속하는 일반 `GET` 요청은 자동으로 HTTPS 점검 페이지를 받는다.
 
 ### 3. 장기 장애: 승인된 전체 Azure DR
 

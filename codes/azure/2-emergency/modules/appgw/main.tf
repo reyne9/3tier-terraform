@@ -77,7 +77,7 @@ resource "azurerm_application_gateway" "main" {
     interval            = 30
     timeout             = 20
     unhealthy_threshold = 3
-    host                = var.backend_ip_addresses[0]
+    host                = "127.0.0.1" # Host-agnostic Web listener; works with an empty bootstrap pool
     port                = var.backend_port
 
     match {

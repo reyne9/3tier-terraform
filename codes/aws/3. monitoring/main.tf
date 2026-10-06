@@ -277,25 +277,49 @@ resource "aws_cloudwatch_metric_alarm" "node_cpu_high" {
 }
 
 # StatusCheckFailed Alarm (EC2 인스턴스 상태 체크)
+data "aws_eks_node_group" "monitoring" {
+  for_each        = data.aws_eks_node_groups.all.names
+  cluster_name    = var.eks_cluster_name
+  node_group_name = each.value
+}
+
+locals {
+  node_asg_names = sort(flatten([
+    for group in data.aws_eks_node_group.monitoring : [
+      for asg in group.resources[0].autoscaling_groups : asg.name
+    ]
+  ]))
+}
+
 resource "aws_cloudwatch_metric_alarm" "node_status_check_failed" {
   alarm_name          = "${var.environment}-eks-node-status-check-failed"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "StatusCheckFailed"
-  namespace           = "AWS/EC2"
-  period              = 60
-  statistic           = "Maximum"
   threshold           = 0
   alarm_description   = "EKS 노드 상태 체크 실패 - 자동 복구 트리거"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "missing"
 
-  dimensions = {
-    AutoScalingGroupName = "${var.environment}-eks-nodes"
+  metric_query {
+    id          = "failed"
+    expression  = "MAX(METRICS())"
+    return_data = true
   }
 
-  tags = {
-    Name = "${var.environment}-eks-node-status-check-failed"
+  dynamic "metric_query" {
+    for_each = local.node_asg_names
+    content {
+      id          = "node${metric_query.key}"
+      return_data = false
+      metric {
+        namespace   = "AWS/EC2"
+        metric_name = "StatusCheckFailed"
+        period      = 60
+        stat        = "Maximum"
+        dimensions  = { AutoScalingGroupName = metric_query.value }
+      }
+    }
   }
 }
 
@@ -375,18 +399,18 @@ resource "aws_cloudwatch_metric_alarm" "node_count_low" {
 # ALB Alarms
 # =================================================
 
-# SurgeQueueLength Alarm
+# RejectedConnectionCount Alarm
 resource "aws_cloudwatch_metric_alarm" "alb_surge_queue" {
   count               = var.alb_name != "" ? 1 : 0
   alarm_name          = "${var.environment}-alb-surge-queue-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "SurgeQueueLength"
+  metric_name         = "RejectedConnectionCount"
   namespace           = "AWS/ApplicationELB"
   period              = 60
-  statistic           = "Maximum"
+  statistic           = "Sum"
   threshold           = var.surge_queue_threshold
-  alarm_description   = "ALB Surge Queue 길이가 ${var.surge_queue_threshold}을 초과했습니다"
+  alarm_description   = "ALB 거부된 연결 수가 ${var.surge_queue_threshold}을 초과했습니다"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
 
@@ -1088,6 +1112,7 @@ resource "aws_iam_role_policy" "auto_recovery_lambda" {
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
           "ec2:TerminateInstances",
           "ec2:RebootInstances"
         ]
@@ -1137,7 +1162,7 @@ resource "aws_lambda_function" "auto_recovery" {
     Name = "${var.environment}-eks-auto-recovery"
   }
 
-  depends_on = [aws_cloudwatch_log_group.lambda_logs]
+  depends_on = [aws_cloudwatch_log_group.lambda_logs, aws_iam_role_policy.auto_recovery_lambda]
 }
 
 resource "aws_cloudwatch_log_group" "lambda_logs" {
@@ -1479,10 +1504,10 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
         width  = 6
         height = 6
         properties = {
-          title  = "Surge Queue Length"
+          title  = "Rejected Connections"
           region = var.aws_region
           metrics = [
-            ["AWS/ApplicationELB", "SurgeQueueLength", "LoadBalancer", var.alb_arn_suffix, { stat = "Maximum", color = "#ff9900" }]
+            ["AWS/ApplicationELB", "RejectedConnectionCount", "LoadBalancer", var.alb_arn_suffix, { stat = "Sum", color = "#ff9900" }]
           ]
           period = 60
           annotations = {
@@ -2059,4 +2084,21 @@ resource "aws_cloudwatch_dashboard" "eks_monitoring" {
       }
     ]
   })
+}
+
+# Adopt log groups created by the EKS Observability add-on before monitoring apply.
+data "aws_cloudwatch_log_groups" "container_insights" {
+  log_group_name_prefix = "/aws/containerinsights/${var.eks_cluster_name}/"
+}
+
+import {
+  for_each = toset([for name in data.aws_cloudwatch_log_groups.container_insights.log_group_names : name if name == "/aws/containerinsights/${var.eks_cluster_name}/performance"])
+  to       = aws_cloudwatch_log_group.container_insights
+  id       = each.value
+}
+
+import {
+  for_each = toset([for name in data.aws_cloudwatch_log_groups.container_insights.log_group_names : name if name == "/aws/containerinsights/${var.eks_cluster_name}/application"])
+  to       = aws_cloudwatch_log_group.application
+  id       = each.value
 }

@@ -28,13 +28,6 @@ resource "aws_security_group" "rds" {
   description = "Security group for RDS MySQL"
   vpc_id      = var.vpc_id
 
-  ingress {
-    description     = "MySQL from EKS"
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [var.eks_security_group_id]
-  }
 
   egress {
     description = "Allow all outbound"
@@ -146,7 +139,7 @@ resource "aws_db_instance" "main" {
 
   multi_az                = var.multi_az
   publicly_accessible     = false
-  backup_retention_period = 7
+  backup_retention_period = var.backup_retention_period
   backup_window           = "03:00-04:00"
   maintenance_window      = "mon:04:00-mon:05:00"
 
@@ -167,4 +160,14 @@ resource "aws_db_instance" "main" {
   }
 
   depends_on = [aws_iam_role_policy_attachment.rds_enhanced_monitoring]
+}
+
+resource "aws_security_group_rule" "rds_from_eks" {
+  type                     = "ingress"
+  description              = "MySQL from EKS"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.rds.id
+  source_security_group_id = var.eks_security_group_id
 }

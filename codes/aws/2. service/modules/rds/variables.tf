@@ -84,3 +84,12 @@ variable "monitoring_interval" {
   type        = number
   default     = 60
 }
+
+variable "backup_retention_period" {
+  type    = number
+  default = 7
+  validation {
+    condition     = var.backup_retention_period >= 0 && var.backup_retention_period <= 35
+    error_message = "RDS backup retention must be between 0 and 35 days."
+  }
+}

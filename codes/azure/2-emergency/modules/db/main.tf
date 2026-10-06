@@ -44,8 +44,8 @@ resource "azurerm_mysql_flexible_server_firewall_rule" "aks_subnet" {
   name                = "AllowAKSSubnet"
   resource_group_name = var.resource_group_name
   server_name         = azurerm_mysql_flexible_server.main.name
-  start_ip_address    = "4.230.0.0"
-  end_ip_address      = "4.230.255.255"
+  start_ip_address    = var.aks_outbound_ip
+  end_ip_address      = var.aks_outbound_ip
 }
 
 # MySQL 방화벽 규칙 - 현재 관리자 IP 허용 (선택사항)

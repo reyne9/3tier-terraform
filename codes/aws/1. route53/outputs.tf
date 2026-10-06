@@ -17,7 +17,7 @@ output "route53_zone_name" {
 
 output "dns_record" {
   description = "Route53 DNS 레코드 정보"
-  value = var.enable_custom_domain && local.alb_dns_name != null ? {
+  value = var.enable_custom_domain ? {
     domain = var.domain_name
     type   = "A (Alias to CloudFront)"
     target = aws_cloudfront_distribution.main[0].domain_name
@@ -33,22 +33,22 @@ output "dns_record" {
 
 output "cloudfront_distribution_id" {
   description = "CloudFront Distribution ID"
-  value       = var.enable_custom_domain && local.alb_dns_name != null ? aws_cloudfront_distribution.main[0].id : ""
+  value       = var.enable_custom_domain ? aws_cloudfront_distribution.main[0].id : ""
 }
 
 output "cloudfront_domain_name" {
   description = "CloudFront Domain Name (CDN endpoint)"
-  value       = var.enable_custom_domain && local.alb_dns_name != null ? aws_cloudfront_distribution.main[0].domain_name : ""
+  value       = var.enable_custom_domain ? aws_cloudfront_distribution.main[0].domain_name : ""
 }
 
 output "cloudfront_url" {
   description = "CloudFront HTTPS URL"
-  value       = var.enable_custom_domain && local.alb_dns_name != null ? "https://${var.domain_name}" : ""
+  value       = var.enable_custom_domain ? "https://${var.domain_name}" : ""
 }
 
 output "cloudfront_status" {
   description = "CloudFront Distribution 상태"
-  value       = var.enable_custom_domain && local.alb_dns_name != null ? aws_cloudfront_distribution.main[0].status : "Not deployed"
+  value       = var.enable_custom_domain ? aws_cloudfront_distribution.main[0].status : "Not deployed"
 }
 
 # =================================================
@@ -57,7 +57,7 @@ output "cloudfront_status" {
 
 output "origin_failover_config" {
   description = "CloudFront Origin Failover 구성"
-  value = var.enable_custom_domain && local.alb_dns_name != null ? {
+  value = var.enable_custom_domain ? {
     traffic_mode     = var.traffic_mode
     failover_enabled = var.traffic_mode == "normal"
     primary_origin   = local.alb_dns_name
@@ -65,10 +65,16 @@ output "origin_failover_config" {
     failover_codes   = [500, 502, 503, 504]
     origin_group_id  = "multi-cloud-failover-group"
     active_origin_id = var.traffic_mode == "azure_dr" ? "azure-frontdoor-dr" : "multi-cloud-failover-group"
-    allowed_methods  = var.traffic_mode == "azure_dr" ? ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"] : ["GET", "HEAD"]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"]
     } : {
+    traffic_mode     = var.traffic_mode
     failover_enabled = false
-    message          = "Custom domain is disabled or ALB not configured"
+    primary_origin   = null
+    secondary_origin = null
+    failover_codes   = []
+    origin_group_id  = null
+    active_origin_id = null
+    allowed_methods  = []
   }
 }
 
@@ -92,7 +98,7 @@ output "ssl_certificate_info" {
 
 output "management_commands" {
   description = "CloudFront 관리 명령어"
-  value = var.enable_custom_domain && local.alb_dns_name != null ? {
+  value = var.enable_custom_domain ? {
     cache_invalidation = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.main[0].id} --paths '/*'"
     get_distribution   = "aws cloudfront get-distribution --id ${aws_cloudfront_distribution.main[0].id}"
     list_invalidations = "aws cloudfront list-invalidations --distribution-id ${aws_cloudfront_distribution.main[0].id}"
@@ -102,7 +108,7 @@ output "management_commands" {
 
 output "monitoring_commands" {
   description = "모니터링 및 확인 명령어"
-  value = var.enable_custom_domain && local.alb_dns_name != null ? {
+  value = var.enable_custom_domain ? {
     dns_lookup       = "dig ${var.domain_name}"
     curl_test        = "curl -I https://${var.domain_name}"
     check_cloudfront = "aws cloudfront get-distribution --id ${aws_cloudfront_distribution.main[0].id} --query 'Distribution.Status'"
@@ -180,5 +186,5 @@ output "active_traffic_path" {
 
 output "deployment_summary" {
   description = "배포 요약 정보"
-  value       = var.enable_custom_domain && local.alb_dns_name != null ? "CloudFront + Route53 deployment completed" : "Custom domain is disabled or ALB not configured. Please check terraform.tfvars."
+  value       = var.enable_custom_domain ? "CloudFront + Route53 deployment completed" : "Custom domain is disabled or ALB not configured. Please check terraform.tfvars."
 }

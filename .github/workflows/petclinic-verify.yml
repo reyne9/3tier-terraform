@@ -1,0 +1,33 @@
+name: Verify PetClinic application
+
+on:
+  push:
+    paths:
+      - 'spring-petclinic/**'
+      - '.github/workflows/petclinic-verify.yml'
+  pull_request:
+    paths:
+      - 'spring-petclinic/**'
+      - '.github/workflows/petclinic-verify.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spring-petclinic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: spring-petclinic/pom.xml
+      - name: Run tests and package the application
+        run: ./mvnw -B verify
+      - name: Build WAS image
+        run: docker build -f Dockerfile.was -t petclinic-was:verify .
+      - name: Build Web image
+        run: docker build -f Dockerfile.web -t petclinic-web:verify .

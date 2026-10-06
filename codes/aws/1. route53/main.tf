@@ -99,7 +99,7 @@ locals {
 #   CloudFront -> Azure Front Door -> Application Gateway -> AKS
 
 resource "aws_cloudfront_distribution" "main" {
-  count = var.enable_custom_domain && local.alb_dns_name != null ? 1 : 0
+  count = var.enable_custom_domain ? 1 : 0
 
   enabled             = true
   is_ipv6_enabled     = true
@@ -161,14 +161,10 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # normal은 읽기 전용 Origin Failover, azure_dr은 Front Door 직접 전환이다.
-  # Origin Group은 쓰기 요청을 failover하지 않으므로 azure_dr에서만 7개 method를 연다.
+  # 두 모드 모두 애플리케이션 쓰기 요청을 허용한다.
+  # normal의 POST 등은 AWS로 전달되며 Secondary로 자동 failover하지 않는다.
   default_cache_behavior {
-    allowed_methods = var.traffic_mode == "azure_dr" ? [
-      "GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"
-      ] : [
-      "GET", "HEAD"
-    ]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = var.traffic_mode == "azure_dr" ? "azure-frontdoor-dr" : "multi-cloud-failover-group"
 
@@ -215,6 +211,10 @@ resource "aws_cloudfront_distribution" "main" {
 
   lifecycle {
     precondition {
+      condition     = var.alb_dns_name != "" || var.eks_cluster_name != ""
+      error_message = "alb_dns_name 또는 ALB 조회에 사용할 eks_cluster_name을 입력해야 합니다."
+    }
+    precondition {
       condition     = local.azure_frontdoor_domain_name != ""
       error_message = "azure_frontdoor_domain_name에는 1-always의 Front Door endpoint hostname을 입력해야 합니다."
     }
@@ -227,7 +227,7 @@ resource "aws_cloudfront_distribution" "main" {
 
 # Health Check for AWS ALB (Direct)
 resource "aws_route53_health_check" "aws_alb" {
-  count = var.enable_custom_domain && local.alb_dns_name != null ? 1 : 0
+  count = var.enable_custom_domain ? 1 : 0
 
   fqdn              = local.alb_dns_name
   port              = 80
@@ -291,7 +291,7 @@ resource "aws_route53_health_check" "azure_frontdoor" {
 
 # Route53 A Record pointing to CloudFront
 resource "aws_route53_record" "main" {
-  count = var.enable_custom_domain && local.alb_dns_name != null ? 1 : 0
+  count = var.enable_custom_domain ? 1 : 0
 
   zone_id = local.hosted_zone_id
   name    = var.domain_name

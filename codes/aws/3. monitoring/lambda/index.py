@@ -34,7 +34,12 @@ def handler(event, context):
     try:
         # SNS 메시지 파싱
         for record in event.get('Records', []):
-            message = json.loads(record['Sns']['Message'])
+            try:
+                message = json.loads(record['Sns']['Message'])
+            except (ValueError, KeyError, TypeError):
+                continue
+            if not isinstance(message, dict) or 'AlarmName' not in message:
+                continue
             alarm_name = message.get('AlarmName', '')
             new_state = message.get('NewStateValue', '')
 
@@ -86,7 +91,7 @@ def perform_recovery(alarm_name: str, alarm_data: dict) -> dict:
             result = handle_resource_pressure(alarm_data)
 
         # Unhealthy 호스트 알람
-        elif 'unhealthy-hosts' in alarm_name.lower():
+        elif 'unhealthy-host' in alarm_name.lower():
             result = handle_unhealthy_hosts(alarm_data)
 
         else:
@@ -144,7 +149,7 @@ def handle_node_status_check_failed(alarm_data: dict) -> dict:
                         instance_status = status.get('InstanceStatus', {}).get('Status', '')
                         system_status = status.get('SystemStatus', {}).get('Status', '')
 
-                        if instance_status != 'ok' or system_status != 'ok':
+                        if instance_status == 'impaired' or system_status == 'impaired':
                             logger.info(f"Terminating unhealthy instance: {instance_id}")
 
                             # 인스턴스 종료 (ASG가 자동으로 새 인스턴스 시작)
@@ -299,7 +304,7 @@ This is an automated message from EKS Auto Recovery Lambda.
     try:
         sns.publish(
             TopicArn=SNS_TOPIC_ARN,
-            Subject=f"[{status}] EKS Auto Recovery - {alarm_name}",
+            Subject=f"[{status}] EKS Auto Recovery - {alarm_name}"[:100],
             Message=message
         )
         logger.info(f"Notification sent for alarm: {alarm_name}")

@@ -1,109 +1,48 @@
- #!/bin/bash
-# PlanB/azure/2-emergency/restore-db.sh
-# MySQL 백업 복구 스크립트 (하드코딩 버전)
-
-set -e
-
-echo "=========================================="
-echo "MySQL 백업 복구 (Plan B - Emergency)"
-echo "시작 시간: $(date)"
-echo "=========================================="
-
-# ============================================
-# 하드코딩 설정 (여기를 수정하세요)
-# ============================================
-MYSQL_HOST="mysql-dr-blue.mysql.database.azure.com"
-RESOURCE_GROUP="rg-dr-blue"
-STORAGE_ACCOUNT="bloberry01"
-CONTAINER="mysql-backups"
-DB_NAME="petclinic"
-DB_USER="mysqladmin"
-# ============================================
-
-echo ""
-echo "설정 정보:"
-echo "  MySQL Host: $MYSQL_HOST"
-echo "  Resource Group: $RESOURCE_GROUP"
-echo "  Storage Account: $STORAGE_ACCOUNT"
-echo ""
-
-# 비밀번호 입력
-read -sp "MySQL Password: " DB_PASSWORD
-echo ""
-
-if [ -z "$DB_PASSWORD" ]; then
-    echo "ERROR: 비밀번호가 입력되지 않았습니다."
-    exit 1
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TF_DIR="$(dirname "$SCRIPT_DIR")"
+for tool in terraform az mysql gzip; do
+  command -v "$tool" >/dev/null || { echo "ERROR: $tool 설치가 필요합니다." >&2; exit 1; }
+done
+MYSQL_HOST=$(terraform -chdir="$TF_DIR" output -raw mysql_fqdn)
+DB_NAME=$(terraform -chdir="$TF_DIR" output -raw mysql_database_name)
+DB_USER=$(terraform -chdir="$TF_DIR" output -raw mysql_username)
+STORAGE_ACCOUNT=$(terraform -chdir="$TF_DIR" output -raw storage_account_name)
+CONTAINER=$(terraform -chdir="$TF_DIR" output -raw backup_container_name)
+if [[ -z "${DB_PASSWORD:-}" ]]; then
+  read -r -s -p 'MySQL Password: ' DB_PASSWORD
+  echo
 fi
-
-# MySQL 클라이언트 설치 확인
-if ! command -v mysql &> /dev/null; then
-    echo ""
-    echo "MySQL 클라이언트가 설치되지 않았습니다."
-    echo "설치 중..."
-    sudo apt-get update
-    sudo apt-get install -y mysql-client
+: "${DB_PASSWORD:?MySQL 비밀번호가 필요합니다.}"
+# az login with Storage Blob Data Reader, or AZURE_STORAGE_KEY/SAS_TOKEN.
+AUTH_ARGS=(--auth-mode login)
+if [[ -n "${AZURE_STORAGE_KEY:-}" || -n "${AZURE_STORAGE_SAS_TOKEN:-}" ]]; then
+  AUTH_ARGS=(--auth-mode key)
 fi
-
-echo ""
-echo "[1/4] 최신 백업 파일 찾기..."
-LATEST_BACKUP=$(az storage blob list \
-    --account-name "$STORAGE_ACCOUNT" \
-    --container-name "$CONTAINER" \
-    --prefix "backups/" \
-    --query "sort_by([], &properties.lastModified)[-1].name" \
-    --output tsv 2>/dev/null)
-
-if [ -z "$LATEST_BACKUP" ]; then
-    echo "ERROR: 백업 파일을 찾을 수 없습니다."
-    exit 1
+LATEST_BACKUP=$(az storage blob list --account-name "$STORAGE_ACCOUNT" \
+  "${AUTH_ARGS[@]}" --container-name "$CONTAINER" --prefix 'backups/' \
+  --query "sort_by([?ends_with(name, '.sql.gz')], &properties.lastModified)[-1].name" -o tsv)
+[[ -n "$LATEST_BACKUP" && "$LATEST_BACKUP" != "None" ]] || { echo "ERROR: 백업이 없습니다." >&2; exit 1; }
+RESTORE_DIR=$(mktemp -d)
+trap 'rm -rf "$RESTORE_DIR"' EXIT
+az storage blob download --account-name "$STORAGE_ACCOUNT" \
+  "${AUTH_ARGS[@]}" --container-name "$CONTAINER" --name "$LATEST_BACKUP" \
+  --file "$RESTORE_DIR/backup.sql.gz" --only-show-errors
+gzip -t "$RESTORE_DIR/backup.sql.gz"
+gzip -d "$RESTORE_DIR/backup.sql.gz"
+# Reject another database's dump before executing its embedded USE statement.
+DUMP_DB=$(sed -n 's/^USE `\(.*\)`;$/\1/p' "$RESTORE_DIR/backup.sql" | sort -u)
+if [[ "$DUMP_DB" != "$DB_NAME" ]]; then
+  echo "ERROR: 백업 DB 이름과 대상 db_name이 다릅니다. 복원을 중단합니다." >&2
+  exit 1
 fi
-
-echo "최신 백업: $LATEST_BACKUP"
-
-echo ""
-echo "[2/4] 백업 다운로드..."
-RESTORE_DIR="/tmp/mysql-restore"
-mkdir -p "$RESTORE_DIR"
-
-az storage blob download \
-    --account-name "$STORAGE_ACCOUNT" \
-    --container-name "$CONTAINER" \
-    --name "$LATEST_BACKUP" \
-    --file "$RESTORE_DIR/backup.sql.gz" \
-    --overwrite
-
-echo ""
-echo "[3/4] 압축 해제..."
-gunzip -f "$RESTORE_DIR/backup.sql.gz"
-
-echo ""
-echo "[4/4] MySQL 복구..."
-# Azure MySQL의 제약으로 stdin/pipe 리다이렉션 불가
-# SQL을 파일에서 읽어 mysql에 전달
-MYSQL_PWD="$DB_PASSWORD" mysql --batch \
-      -h "$MYSQL_HOST" \
-      -u "$DB_USER" \
-      --ssl-mode=REQUIRED \
-      2>/dev/null <<EOF
-$(cat "$RESTORE_DIR/backup.sql")
-EOF
-
-echo ""
-echo "=========================================="
-echo "MySQL 백업 복구 완료!"
-echo "=========================================="
-echo ""
-echo "MySQL Host: $MYSQL_HOST"
-echo "Database: $DB_NAME"
-echo ""
-echo "다음 단계:"
-echo "  1. MySQL 연결 테스트"
-echo "     mysql -h $MYSQL_HOST -u $DB_USER -p --ssl-mode=REQUIRED"
-echo ""
-echo "  2. 3단계 배포"
-echo "     cd ../../3-failover && terraform apply"
-echo ""
-
-# 정리
-rm -rf "$RESTORE_DIR"
+export MYSQL_PWD="$DB_PASSWORD"
+mysql --batch --ssl-mode=REQUIRED -h "$MYSQL_HOST" -u "$DB_USER" "$DB_NAME" < "$RESTORE_DIR/backup.sql"
+TABLE_COUNT=$(mysql --batch --skip-column-names --ssl-mode=REQUIRED \
+  -h "$MYSQL_HOST" -u "$DB_USER" "$DB_NAME" \
+  -e 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE();')
+[[ "$TABLE_COUNT" -gt 0 ]] || { echo "ERROR: 대상 DB에 복원된 테이블이 없습니다. 양쪽 db_name을 확인하세요." >&2; exit 1; }
+echo "복원 완료: $LATEST_BACKUP → $MYSQL_HOST/$DB_NAME ($TABLE_COUNT tables)"
+echo "트래픽 전환 전에 실제 데이터와 애플리케이션 읽기·쓰기를 검증하세요."

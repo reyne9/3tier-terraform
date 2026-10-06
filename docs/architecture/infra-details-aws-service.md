@@ -10,10 +10,9 @@
 - Web/WAS node group
 - RDS MySQL
 - Backup EC2
-- Terraform ALB module
-- Kubernetes Ingress가 AWS Load Balancer Controller를 통해 생성하는 ALB 경로
+- Kubernetes Ingress와 AWS Load Balancer Controller가 생성하는 ALB
 
-현재 repository에는 Terraform `modules/alb`와 Kubernetes Ingress 기반 ALB 구성이 모두 존재한다. 실제 사용자 진입 ALB를 설명할 때는 배포 방식과 output을 확인하고 혼용하지 않는다.
+사용자 진입 ALB는 Kubernetes Ingress와 AWS Load Balancer Controller가 생성하고 관리한다. Terraform은 ALB를 직접 생성하지 않는다.
 
 ## 네트워크
 
@@ -86,26 +85,19 @@ Ingress annotation과 Controller가 실제 ALB 및 target을 만든다.
 
 Storage key와 DB password는 Terraform state에 남을 수 있으므로 운영에서는 secret manager가 필요하다.
 
-## ALB 구성의 두 경로
-
-### Terraform module
-
-`modules/alb`:
-
-- Internet-facing ALB
-- 80/443 ingress
-- IP target group
-- `/` health check
-- HTTP listener
-- 조건부 HTTPS listener
-
-### Kubernetes Ingress
+## ALB 구성
 
 `k8s-manifests/ingress/ingress.yaml`:
 
+- ALB의 단일 정의 지점
 - `ingressClassName: alb`
 - AWS Load Balancer Controller가 ALB를 생성
-- Web Service로 라우팅
+- Internet-facing ALB와 IP Target Group을 생성
+- 정상 Web Pod IP를 Target Group에 등록
+- `/health` 상태 검사를 통과한 Web Pod로 라우팅
+
+Terraform은 ALB, Listener, Target Group을 직접 생성하지 않는다. Ingress가 배포된 후
+`codes/aws/1. route53` 단계가 EKS 클러스터 태그로 ALB를 조회하여 CloudFront Origin으로 사용한다.
 
 삭제 의존성 문제는 주로 Controller가 만든 ALB/Target Group/ENI가 Terraform VPC 삭제보다 늦게 정리될 때 발생한다.
 
@@ -128,6 +120,9 @@ kubectl apply -f k8s-manifests/namespaces.yaml
 kubectl apply -f k8s-manifests/was/
 kubectl apply -f k8s-manifests/web/
 kubectl apply -f k8s-manifests/ingress/
+
+# ADDRESS가 생성될 때까지 확인
+kubectl get ingress web-ingress -n web -w
 ```
 
 ## 검증

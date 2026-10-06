@@ -19,7 +19,7 @@ environment = "prod"
 # mysql_storage_gb = 20
 
 # AKS 설정 (선택사항 - 기본값 사용 가능)
-# kubernetes_version = "1.28"
+# kubernetes_version = null # 또는 해당 리전에서 지원하는 버전
 # web_node_count     = 2
 # web_node_min_count = 2
 # web_node_max_count = 5
@@ -28,10 +28,12 @@ environment = "prod"
 # was_node_max_count = 5
 # node_vm_size       = "Standard_D2s_v3"
 
-# ⚠️ CRITICAL: Application Gateway Backend IP (필수)
-# AKS 배포 후 WAS LoadBalancer External IP를 확인하여 설정해야 합니다:
-# kubectl get svc -n was was-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-backend_ip_addresses = ["REPLACE_WITH_WAS_LOADBALANCER_IP"]
+# 최초 배포 후 scripts/deploy-complete.sh가 Web LB 주소를 저장하고 적용합니다.
+backend_ip_addresses = []
+backend_port = 80
+
+# 로컬에서 DB 복원을 실행할 때 해당 PC의 공인 IPv4를 입력하세요.
+# admin_ip = "203.0.113.10"
 
 # Tags
 tags = {

@@ -17,153 +17,30 @@ resource "null_resource" "cleanup_k8s_resources" {
     vpc_id       = var.vpc_id
   }
 
+  depends_on = [aws_eks_node_group.web, aws_eks_node_group.was]
+
   provisioner "local-exec" {
     when        = destroy
     interpreter = ["/bin/bash", "-c"]
-    on_failure  = continue
     command     = <<-BASH
-      set -e
-      echo "=== Starting cleanup of Kubernetes-created AWS resources ==="
-
-      VPC_ID="${self.triggers.vpc_id}"
-
-      # AWS CLI 기본 region 사용 (AWS_DEFAULT_REGION 환경 변수 또는 ~/.aws/config)
-      # 기본값으로 ap-northeast-2 사용
-      AWS_REGION=$${AWS_DEFAULT_REGION:-ap-northeast-2}
-
-      echo "VPC ID: $VPC_ID"
-      echo "Region: $AWS_REGION"
-
-      # 1. VPC 내 모든 Load Balancer 조회 및 삭제
-      echo "Step 1: Deleting Load Balancers in VPC $VPC_ID..."
-      LB_ARNS=$(aws elbv2 describe-load-balancers \
-        --region "$AWS_REGION" \
-        --query "LoadBalancers[?VpcId=='$VPC_ID'].LoadBalancerArn" \
-        --output text 2>/dev/null || echo "")
-
-      if [ -n "$LB_ARNS" ]; then
-        for lb_arn in $LB_ARNS; do
-          echo "  - Deleting Load Balancer: $lb_arn"
-          aws elbv2 delete-load-balancer \
-            --region "$AWS_REGION" \
-            --load-balancer-arn "$lb_arn" 2>/dev/null || true
-        done
-
-        # ALB/NLB 삭제 대기
-        echo "  - Waiting for Load Balancers to be deleted (30s)..."
-        sleep 30
-      else
-        echo "  - No Load Balancers found"
-      fi
-
-      # 2. VPC 내 모든 Target Group 삭제
-      echo "Step 2: Deleting Target Groups in VPC $VPC_ID..."
-      TG_ARNS=$(aws elbv2 describe-target-groups \
-        --region "$AWS_REGION" \
-        --query "TargetGroups[?VpcId=='$VPC_ID'].TargetGroupArn" \
-        --output text 2>/dev/null || echo "")
-
-      if [ -n "$TG_ARNS" ]; then
-        for tg_arn in $TG_ARNS; do
-          echo "  - Deleting Target Group: $tg_arn"
-          aws elbv2 delete-target-group \
-            --region "$AWS_REGION" \
-            --target-group-arn "$tg_arn" 2>/dev/null || true
-        done
-      else
-        echo "  - No Target Groups found"
-      fi
-
-      # 3. VPC 내 모든 ENI (Elastic Network Interface) 정리
-      echo "Step 3: Cleaning up Network Interfaces in VPC $VPC_ID..."
-
-      # 3-1. ELB 관련 ENI 찾기 (Description에 ELB 포함)
-      ELB_ENI_IDS=$(aws ec2 describe-network-interfaces \
-        --region "$AWS_REGION" \
-        --filters "Name=vpc-id,Values=$VPC_ID" \
-        --query "NetworkInterfaces[?contains(Description, 'ELB')].NetworkInterfaceId" \
-        --output text 2>/dev/null || echo "")
-
-      if [ -n "$ELB_ENI_IDS" ]; then
-        for eni_id in $ELB_ENI_IDS; do
-          echo "  - Detaching and deleting ELB ENI: $eni_id"
-
-          # Attachment가 있으면 먼저 detach
-          ATTACHMENT_ID=$(aws ec2 describe-network-interfaces \
-            --region "$AWS_REGION" \
-            --network-interface-ids "$eni_id" \
-            --query 'NetworkInterfaces[0].Attachment.AttachmentId' \
-            --output text 2>/dev/null || echo "")
-
-          if [ -n "$ATTACHMENT_ID" ] && [ "$ATTACHMENT_ID" != "None" ]; then
-            echo "    - Detaching attachment: $ATTACHMENT_ID"
-            aws ec2 detach-network-interface \
-              --region "$AWS_REGION" \
-              --attachment-id "$ATTACHMENT_ID" \
-              --force 2>/dev/null || true
-            sleep 5
-          fi
-
-          # ENI 삭제
-          aws ec2 delete-network-interface \
-            --region "$AWS_REGION" \
-            --network-interface-id "$eni_id" 2>/dev/null || true
-        done
-
-        echo "  - Waiting for ELB ENIs to be deleted (15s)..."
-        sleep 15
-      else
-        echo "  - No ELB ENIs found"
-      fi
-
-      # 3-2. Available 상태 ENI 삭제
-      AVAILABLE_ENI_IDS=$(aws ec2 describe-network-interfaces \
-        --region "$AWS_REGION" \
-        --filters "Name=vpc-id,Values=$VPC_ID" "Name=status,Values=available" \
-        --query "NetworkInterfaces[].NetworkInterfaceId" \
-        --output text 2>/dev/null || echo "")
-
-      if [ -n "$AVAILABLE_ENI_IDS" ]; then
-        for eni_id in $AVAILABLE_ENI_IDS; do
-          echo "  - Deleting available ENI: $eni_id"
-          aws ec2 delete-network-interface \
-            --region "$AWS_REGION" \
-            --network-interface-id "$eni_id" 2>/dev/null || true
-        done
-      else
-        echo "  - No available ENIs found"
-      fi
-
-      # 4. Lambda ENI 및 기타 ENI 정리 (재시도)
-      echo "Step 4: Final ENI cleanup (retry for any remaining ENIs)..."
-
-      for i in {1..3}; do
-        REMAINING_ENIS=$(aws ec2 describe-network-interfaces \
-          --region "$AWS_REGION" \
-          --filters "Name=vpc-id,Values=$VPC_ID" \
-          --query "NetworkInterfaces[?Status=='available' || contains(Description, 'ELB') || contains(Description, 'Lambda')].NetworkInterfaceId" \
-          --output text 2>/dev/null || echo "")
-
-        if [ -n "$REMAINING_ENIS" ]; then
-          echo "  - Retry $i: Found remaining ENIs"
-          for eni_id in $REMAINING_ENIS; do
-            echo "    - Deleting ENI: $eni_id"
-            aws ec2 delete-network-interface \
-              --region "$AWS_REGION" \
-              --network-interface-id "$eni_id" 2>/dev/null || true
-          done
-          sleep 10
-        else
-          echo "  - No remaining ENIs found"
-          break
-        fi
+      set -euo pipefail
+      export KUBECONFIG="$(mktemp)"
+      trap 'rm -f "$KUBECONFIG"' EXIT
+      AWS_REGION=$${AWS_REGION:-$${AWS_DEFAULT_REGION:-ap-northeast-2}}
+      aws eks update-kubeconfig --name "${self.triggers.cluster_name}" --region "$AWS_REGION" >/dev/null
+      kubectl delete ingress --all --all-namespaces --wait=true --timeout=300s
+      while read -r namespace name; do
+        kubectl delete service "$name" -n "$namespace" --wait=true --timeout=300s
+      done < <(kubectl get services --all-namespaces -o json | jq -r '.items[] | select(.spec.type == "LoadBalancer") | [.metadata.namespace, .metadata.name] | @tsv')
+      # Controller finalizers remove cloud LBs; do not force-detach managed ENIs.
+      for attempt in $(seq 1 60); do
+        count=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
+          --query "length(LoadBalancers[?VpcId=='${self.triggers.vpc_id}'])" --output text)
+        [ "$count" = "0" ] && exit 0
+        sleep 10
       done
-
-      # 5. 최종 대기
-      echo "Step 5: Final wait for all dependencies to be resolved (30s)..."
-      sleep 30
-
-      echo "=== Cleanup completed ==="
+      echo "Load balancers remain in the VPC. Resolve them before retrying destroy." >&2
+      exit 1
     BASH
   }
 }
@@ -386,6 +263,7 @@ resource "aws_eks_addon" "cloudwatch_observability" {
   depends_on = [
     aws_eks_node_group.web,
     aws_eks_node_group.was,
+    aws_iam_role_policy_attachment.cloudwatch_agent_server_policy,
   ]
 }
 

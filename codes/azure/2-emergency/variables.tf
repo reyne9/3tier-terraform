@@ -77,7 +77,7 @@ variable "mysql_storage_gb" {
 variable "kubernetes_version" {
   description = "Kubernetes 버전"
   type        = string
-  default     = "1.28"
+  default     = null # Provision using the regional AKS recommended version
 }
 
 variable "node_vm_size" {
@@ -126,16 +126,20 @@ variable "was_node_max_count" {
 
 # Application Gateway 설정
 variable "backend_ip_addresses" {
-  description = "Application Gateway Backend IP 주소 리스트 (WAS LoadBalancer External IP)"
+  description = "Web LoadBalancer IP 목록. 최초 배포는 비워 두고 deploy-complete.sh로 연결합니다."
   type        = list(string)
-  # AKS 배포 후 WAS service의 External IP를 확인하여 설정:
-  # kubectl get svc -n was was-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  default     = []
+
+  validation {
+    condition     = alltrue([for ip in var.backend_ip_addresses : can(cidrnetmask("${ip}/32"))])
+    error_message = "backend_ip_addresses에는 유효한 IPv4 주소만 입력하세요."
+  }
 }
 
 variable "backend_port" {
   description = "Application Gateway Backend Port"
   type        = number
-  default     = 8080
+  default     = 80
 }
 
 variable "health_probe_path" {
@@ -159,4 +163,10 @@ variable "admin_ip" {
   description = "관리자 IP 주소 (MySQL 접근 허용, 비어있으면 규칙 생성 안함)"
   type        = string
   default     = ""
+}
+
+variable "backup_container_name" {
+  description = "1-always 및 AWS 백업과 동일한 Blob Container 이름"
+  type        = string
+  default     = "mysql-backups"
 }
