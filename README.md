@@ -27,7 +27,7 @@ AWS에서 Spring PetClinic을 운영하고, 장애 시 Azure에서 서비스를 
 | [`scripts/`](scripts/) | 승인 후 DR 전환·복귀 스크립트 |
 | [`docs/`](docs/README.md) | 구현 기준, 배포 순서, 검증 기록, 포트폴리오 다이어그램 |
 
-PetClinic 소스는 [`reyne9/spring-petclinic`](https://github.com/reyne9/spring-petclinic)의 `a2b3596` 커밋을 기준으로 통합했습니다. 원본 Spring PetClinic의 라이선스는 [`spring-petclinic/LICENSE.txt`](spring-petclinic/LICENSE.txt)를 참고하세요. 기존 Docker Hub 태그는 과거 배포 기록이며, 이번 통합 소스로 다시 빌드한 이미지의 클라우드 배포 결과는 확인되지 않았습니다.
+PetClinic 소스의 출처와 통합 내역은 [소스 통합 기록](docs/overview/source-integration.md)에 남겼습니다. 원본 Spring PetClinic의 라이선스는 [`spring-petclinic/LICENSE.txt`](spring-petclinic/LICENSE.txt)를 참고하세요. 기존 Docker Hub 태그는 과거 배포 기록이며, 이번 통합 소스로 다시 빌드한 이미지의 클라우드 배포 결과는 확인되지 않았습니다.
 
 ## 로컬 검증
 
@@ -54,6 +54,7 @@ docker build -f Dockerfile.web -t petclinic-web:local .
 ## 문서
 
 - [현재 구현 기준 아키텍처](docs/architecture/current-implementation.md): 실제 코드의 요청 경로와 DR 전환 조건
+- [소스 통합 기록](docs/overview/source-integration.md): PetClinic 원본 커밋과 통합 범위
 - [코드 검증 기록](docs/runbooks/code-validation.md): 수정 내역, 테스트 범위, 배포 전 점검 항목
 - [배포 가이드](docs/runbooks/deployment-guide.md): AWS·Azure 인프라 설정 순서
 - [DR 절차서](docs/runbooks/dr-failover-procedure.md): 백업 복원과 서비스 전환 순서

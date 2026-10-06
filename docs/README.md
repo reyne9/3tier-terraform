@@ -25,6 +25,7 @@ docs/
 
 - [PORTFOLIO_REPORT.md](overview/PORTFOLIO_REPORT.md): 전체 프로젝트 리포트
 - [petclinic-web-was-separation.md](overview/petclinic-web-was-separation.md): PetClinic Web/WAS 분리 배경과 구조
+- [source-integration.md](overview/source-integration.md): PetClinic 소스의 출처와 통합 범위
 
 ## Runbooks
 
