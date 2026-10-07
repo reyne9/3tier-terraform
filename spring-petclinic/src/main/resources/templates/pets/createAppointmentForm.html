@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
 <body>
-  <h2>Book an appointment</h2>
-  <p th:text="'Pet: ' + ${pet.name}">Pet</p>
-  <p>Clinic hours: weekdays 09:00–17:00 (Asia/Seoul), one-hour slots.</p>
+  <h2 th:text="#{booking.title}">Book an appointment</h2>
+  <p th:text="#{booking.pet(${pet.name})}">Pet</p>
+  <p th:text="#{booking.hours}">Clinic hours: weekdays 09:00–17:00 (Asia/Seoul), one-hour slots.</p>
 
   <form method="get" th:action="@{/owners/{ownerId}/pets/{petId}/appointments/new(ownerId=${owner.id},petId=${pet.id})}">
-    <label for="vetId">Veterinarian</label>
+    <label for="vetId" th:text="#{booking.veterinarian}">Veterinarian</label>
     <select id="vetId" name="vetId" required>
-      <option value="">Select a veterinarian</option>
+      <option value="" th:text="#{booking.selectVeterinarian}">Select a veterinarian</option>
       <option th:each="vet : ${vets}" th:value="${vet.id}"
               th:text="${vet.firstName + ' ' + vet.lastName}"
               th:selected="${vet.id == appointmentForm.vetId}"></option>
     </select>
-    <label for="date">Date</label>
+    <label for="date" th:text="#{date}">Date</label>
     <input id="date" name="date" type="date" th:value="${appointmentForm.date}" required />
-    <button class="btn btn-secondary" type="submit">Check available times</button>
+    <button class="btn btn-secondary" type="submit" th:text="#{booking.checkTimes}">Check available times</button>
   </form>
 
   <form th:if="${appointmentForm.vetId != null and appointmentForm.date != null}"
@@ -26,16 +26,16 @@
     <div th:if="${#fields.hasErrors('*')}" class="alert alert-danger">
       <p th:each="error : ${#fields.errors('*')}" th:text="${error}">Invalid appointment</p>
     </div>
-    <p th:if="${#lists.isEmpty(slots)}">No available times for this date.</p>
+    <p th:if="${#lists.isEmpty(slots)}" th:text="#{booking.noTimes}">No available times for this date.</p>
     <div th:unless="${#lists.isEmpty(slots)}">
-      <label for="time">Available time</label>
+      <label for="time" th:text="#{booking.availableTime}">Available time</label>
       <select id="time" th:field="*{time}" required>
-        <option value="">Select a time</option>
+        <option value="" th:text="#{booking.selectTime}">Select a time</option>
         <option th:each="slot : ${slots}" th:value="${slot}" th:text="${slot}"></option>
       </select>
-      <label for="description">Reason for visit</label>
+      <label for="description" th:text="#{booking.reason}">Reason for visit</label>
       <input id="description" th:field="*{description}" maxlength="255" required />
-      <button class="btn btn-primary" type="submit">Book appointment</button>
+      <button class="btn btn-primary" type="submit" th:text="#{booking.submit}">Book appointment</button>
     </div>
   </form>
 </body>
