@@ -34,6 +34,10 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   oidc_issuer_enabled = true
 
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
+  }
+
   network_profile {
     network_plugin    = "azure"
     network_policy    = "azure"

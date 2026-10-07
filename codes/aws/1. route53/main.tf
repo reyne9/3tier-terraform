@@ -225,9 +225,10 @@ resource "aws_cloudfront_distribution" "main" {
 # Route53 Health Checks
 # =================================================
 
-# Health Check for AWS ALB (Direct)
+# Direct Route 53 probes cannot reach an ALB restricted to CloudFront origins.
+# ALB target health must be monitored with AWS/ApplicationELB metrics instead.
 resource "aws_route53_health_check" "aws_alb" {
-  count = var.enable_custom_domain ? 1 : 0
+  count = 0
 
   fqdn              = local.alb_dns_name
   port              = 80

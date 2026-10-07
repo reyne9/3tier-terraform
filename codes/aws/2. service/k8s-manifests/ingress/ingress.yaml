@@ -8,6 +8,8 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/security-groups: portfolio-cloudfront-origin
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: 'true'
     alb.ingress.kubernetes.io/tags: Project=Multi-Cloud-DR,ManagedBy=AWS-Load-Balancer-Controller
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP

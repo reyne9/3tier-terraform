@@ -5,8 +5,11 @@ resources:
   - web/deployment.yaml
   - web/service.yaml
   - was/deployment.yaml
+  - was/service-account.yaml
+  - was/secret-provider-class.yaml
   - was/service.yaml
   - ingress/ingress.yaml
   - web/hpa.yaml
   - was/hpa.yaml
   - was/network-policy.yaml
+  - web/network-policy.yaml

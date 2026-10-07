@@ -1,5 +1,7 @@
 # Terraform 수정 및 검증 기록
 
+> 2026-10-07 추가: PPT 설명에 맞춰 Karpenter, AWS/Azure Secrets Store CSI, CloudFront origin-facing 보안 그룹과 Web egress 정책을 코드에 연결했다. 변경된 AWS service·Route 53·Azure emergency의 Terraform `validate`, 쉘 구문, AWS/Azure Kustomize 빌드가 통과했다. 신규 리소스의 실제 `apply` 및 장애 테스트는 수행하지 않았다. 아래 2026-10-06 기록은 그 날짜의 구성과 결과다.
+
 > 2026-10-06 재검증: Terraform 1.14.0에서 5개 root의 `fmt -check`와 `validate`, mock `terraform test` 9건이 통과했다. Python 오프라인 회귀 테스트 10건도 통과했다. [GitHub Actions 실행](https://github.com/reyne9/3tier-terraform/actions/runs/37476071052)에서는 Maven 테스트와 Web/WAS 이미지 빌드가 통과했다. 실제 AWS/Azure `apply`, 이미지 레지스트리 푸시와 클라우드 배포는 이번 검증에 포함하지 않았다.
 
 2026-09-22에 기존 AWS Primary / Azure Backup & Restore 구성을 기준으로 수정했습니다. 기능 확장 대신 최초 배포, 정상 요청, 백업·복원, 모니터링을 막는 코드 문제를 처리했습니다. 실제 AWS/Azure apply는 실행하지 않았습니다.
@@ -41,7 +43,7 @@ AWS와 Azure의 `db_name`은 기존 데이터베이스 이름으로 맞추세요
 ## 배포 순서
 
 1. Azure `1-always`: tfvars 입력 → init → plan → apply.
-2. AWS `2. service`: Azure Storage 정보와 DB 비밀번호 입력 → init → plan → apply. LB Controller 설치 후 기존 AWS Web/WAS 매니페스트와 DB Secret을 배포합니다.
+2. AWS `2. service`: Azure Storage 정보와 DB 비밀번호 입력 → init → plan → apply. LB Controller·Secrets Store CSI·Karpenter·metrics-server를 설치하고 Web/WAS 매니페스트를 배포합니다. DB Secret은 CSI 마운트 시 동기화됩니다.
 3. AWS `1. route53`: 기존 Hosted Zone, **us-east-1의 ISSUED ACM 인증서**, 실제 ALB DNS 또는 EKS 이름, Azure Front Door output을 입력하고 적용합니다.
 4. AWS `3. monitoring`: EKS/ALB/RDS/Health Check 정보를 입력하고 적용합니다. Slack 연결은 기존과 같이 사용자가 먼저 완료해야 합니다.
 5. DR 시 Azure `2-emergency`: backend `[]`, port `80`으로 적용합니다. 로컬 복원 PC의 공인 IP는 `admin_ip`에 입력합니다. `restore-db.sh` → `deploy-complete.sh` → 읽기·쓰기·데이터 검증 → 기존 전환 스크립트 순서로 진행합니다.

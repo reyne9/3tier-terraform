@@ -113,6 +113,11 @@ output "rds_jdbc_url" {
   value       = "jdbc:mysql://${module.rds.db_instance_address}:${module.rds.db_port}/${module.rds.db_name}"
 }
 
+output "petclinic_was_role_arn" {
+  description = "WAS ServiceAccount IRSA role ARN"
+  value       = aws_iam_role.petclinic_was.arn
+}
+
 output "rds_availability_zone" {
   description = "RDS 인스턴스 가용영역"
   value       = module.rds.db_availability_zone
@@ -204,7 +209,7 @@ output "deployment_summary" {
   ✅ Same AZ as RDS: ${try(aws_instance.backup_instance[0].availability_zone, "disabled") == module.rds.db_availability_zone ? "YES" : "NO"}
   
   백업 설정:
-    - 주기: 5분마다
+    - Cron 주기: ${var.backup_schedule_cron}
     - 대상: ${module.rds.db_instance_address}
     - 저장소: Azure Blob Storage
       * Account: ${var.azure_storage_account_name}

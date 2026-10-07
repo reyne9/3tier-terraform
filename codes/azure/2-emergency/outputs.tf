@@ -23,6 +23,22 @@ output "aks_cluster_name" {
   value       = module.aks.aks_cluster_name
 }
 
+output "petclinic_key_vault_name" {
+  value       = azurerm_key_vault.petclinic.name
+  description = "PetClinic database Key Vault"
+}
+
+output "key_vault_csi_client_id" {
+  value       = module.aks.key_vault_csi_client_id
+  description = "AKS Key Vault CSI add-on identity client ID"
+}
+
+output "tenant_id" {
+  value       = var.tenant_id
+  description = "Azure tenant ID for SecretProviderClass"
+  sensitive   = true
+}
+
 output "aks_cluster_id" {
   description = "AKS 클러스터 ID"
   value       = module.aks.aks_cluster_id

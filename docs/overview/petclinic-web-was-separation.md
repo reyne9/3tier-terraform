@@ -141,7 +141,7 @@ kubectl exec -n web deploy/web-nginx -- \
 
 ## DB 연결
 
-WAS는 `db-credentials` Secret을 사용한다.
+WAS는 Secrets Store CSI가 AWS Secrets Manager에서 동기화한 `db-credentials` Secret을 사용한다. Azure DR에서는 AKS Key Vault CSI가 동일한 이름으로 동기화한다.
 
 검증:
 

@@ -86,4 +86,15 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+        volumeMounts:
+        - name: db-secrets
+          mountPath: /mnt/petclinic-secrets
+          readOnly: true
+      volumes:
+      - name: db-secrets
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: petclinic-db
       terminationGracePeriodSeconds: 30

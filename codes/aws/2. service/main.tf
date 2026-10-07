@@ -74,6 +74,12 @@ module "eks" {
   depends_on = [module.vpc]
 }
 
+resource "aws_ec2_tag" "karpenter_cluster_security_group" {
+  resource_id = module.eks.cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = module.eks.cluster_name
+}
+
 
 # =================================================
 # AWS RDS MySQL (Multi-AZ)

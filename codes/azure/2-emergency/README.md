@@ -7,6 +7,7 @@
 - Azure MySQL Flexible Server
 - AKS Web/WAS node pool
 - Application Gateway와 Public IP
+- Key Vault, AKS Key Vault CSI add-on, DB 연결값 secret
 
 Resource Group, VNet, Subnet, Storage는 `1-always`를 참조한다.
 
@@ -54,9 +55,9 @@ kubectl get nodes
 kubectl get pods -A
 ```
 
-Terraform의 DB username과 Kubernetes Secret은 동일해야 한다. 현재 validation 값은 `mysqladmin`이다.
+Terraform의 DB username과 Key Vault secret은 같은 입력값에서 생성됩니다. `deploy-petclinic.sh`가 AKS CSI identity를 사용하는 SecretProviderClass를 만들고 Pod 마운트 시 Kubernetes Secret을 동기화합니다. 비밀번호를 터미널에서 다시 입력할 필요는 없습니다.
 
-DB_PASSWORD를 설정한 뒤 실제 매니페스트와 Gateway 연결을 함께 적용합니다.
+실제 매니페스트와 Gateway 연결을 함께 적용합니다.
 
 ```bash
 bash scripts/deploy-complete.sh

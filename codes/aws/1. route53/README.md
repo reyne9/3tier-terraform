@@ -51,6 +51,7 @@ CloudFront가 Front Door Origin을 직접 선택하고 7개 HTTP method를 허�
 - 자동 점검 페이지 전환과 전체 Azure DR은 DNS 전환이 아니라 CloudFront Origin 전환이다.
 - Azure로 전환해도 사용자는 같은 개인 도메인으로 접속하며 ACM 인증서를 Azure로 이동하지 않는다.
 - Route 53 Health Check는 관측용이고 DNS Failover Record는 사용하지 않는다.
+- AWS ALB에는 CloudFront origin-facing prefix list만 들어올 수 있어 Route 53의 ALB 직접 HTTP health check는 생성하지 않는다. CloudFront 경로 health check와 ALB target health를 사용한다.
 
 ## 배포
 

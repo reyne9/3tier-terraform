@@ -10,6 +10,16 @@ output "aks_cluster_name" {
   value       = azurerm_kubernetes_cluster.main.name
 }
 
+output "key_vault_csi_client_id" {
+  description = "AKS Key Vault CSI add-on managed identity client ID"
+  value       = azurerm_kubernetes_cluster.main.key_vault_secrets_provider[0].secret_identity[0].client_id
+}
+
+output "key_vault_csi_object_id" {
+  description = "AKS Key Vault CSI add-on managed identity object ID"
+  value       = azurerm_kubernetes_cluster.main.key_vault_secrets_provider[0].secret_identity[0].object_id
+}
+
 output "aks_cluster_fqdn" {
   description = "AKS Cluster FQDN"
   value       = azurerm_kubernetes_cluster.main.fqdn

@@ -87,6 +87,7 @@ resource "aws_subnet" "web" {
     Type                                           = "Private"
     "kubernetes.io/role/internal-elb"              = "1"
     "kubernetes.io/cluster/${var.environment}-eks" = "shared"
+    "karpenter.sh/discovery"                       = "${var.environment}-eks"
   }
 
   # 서브넷 삭제 시 의존 리소스(ENI, ALB 등) 정리 시간 확보
@@ -112,6 +113,7 @@ resource "aws_subnet" "was" {
     Type                                           = "Private"
     "kubernetes.io/role/internal-elb"              = "1"
     "kubernetes.io/cluster/${var.environment}-eks" = "shared"
+    "karpenter.sh/discovery"                       = "${var.environment}-eks"
   }
 
   # 서브넷 삭제 시 의존 리소스(ENI, ALB 등) 정리 시간 확보
