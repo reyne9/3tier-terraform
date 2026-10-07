@@ -20,7 +20,8 @@ public class AppointmentService {
 	private static final ZoneId CLINIC_ZONE = ZoneId.of("Asia/Seoul");
 
 	private static final List<LocalTime> CLINIC_SLOTS = IntStream.range(9, 17)
-		.mapToObj(hour -> LocalTime.of(hour, 0)).toList();
+		.mapToObj(hour -> LocalTime.of(hour, 0))
+		.toList();
 
 	private final AppointmentRepository appointments;
 
@@ -42,11 +43,10 @@ public class AppointmentService {
 		LocalDateTime now = LocalDateTime.now(CLINIC_ZONE);
 		Set<LocalTime> booked = appointments
 			.findByVetIdAndStartsAtBetween(vetId, date.atStartOfDay(), date.atTime(LocalTime.MAX))
-			.stream().map(appointment -> appointment.getStartsAt().toLocalTime())
+			.stream()
+			.map(appointment -> appointment.getStartsAt().toLocalTime())
 			.collect(java.util.stream.Collectors.toSet());
-		return CLINIC_SLOTS.stream()
-			.filter(time -> date.atTime(time).isAfter(now) && !booked.contains(time))
-			.toList();
+		return CLINIC_SLOTS.stream().filter(time -> date.atTime(time).isAfter(now) && !booked.contains(time)).toList();
 	}
 
 	@Transactional

@@ -35,8 +35,7 @@ class AppointmentController {
 	@GetMapping("/owners/{ownerId}/pets/{petId}/appointments/new")
 	String newAppointment(@PathVariable int ownerId, @PathVariable int petId,
 			@RequestParam(required = false) Integer vetId,
-			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
-			Model model) {
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date, Model model) {
 		AppointmentForm form = new AppointmentForm();
 		form.setVetId(vetId);
 		form.setDate(date);
@@ -47,8 +46,8 @@ class AppointmentController {
 
 	@PostMapping("/owners/{ownerId}/pets/{petId}/appointments/new")
 	String book(@PathVariable int ownerId, @PathVariable int petId,
-			@Valid @ModelAttribute("appointmentForm") AppointmentForm form,
-			BindingResult result, Model model, RedirectAttributes redirectAttributes) {
+			@Valid @ModelAttribute("appointmentForm") AppointmentForm form, BindingResult result, Model model,
+			RedirectAttributes redirectAttributes) {
 		if (!result.hasErrors()) {
 			try {
 				service.book(ownerId, petId, form);

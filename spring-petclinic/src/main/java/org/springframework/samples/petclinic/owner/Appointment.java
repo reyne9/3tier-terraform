@@ -11,7 +11,8 @@ import jakarta.persistence.UniqueConstraint;
 
 /** A booked clinic slot. The database uniqueness constraint prevents double booking. */
 @Entity
-@Table(name = "appointments", uniqueConstraints = @UniqueConstraint(name = "uq_appointments_vet_slot", columnNames = { "vet_id", "starts_at" }))
+@Table(name = "appointments", uniqueConstraints = @UniqueConstraint(name = "uq_appointments_vet_slot",
+		columnNames = { "vet_id", "starts_at" }))
 public class Appointment extends BaseEntity {
 
 	@Column(name = "pet_id", nullable = false)
@@ -36,12 +37,20 @@ public class Appointment extends BaseEntity {
 		this.description = description;
 	}
 
-	public Integer getPetId() { return petId; }
+	public Integer getPetId() {
+		return petId;
+	}
 
-	public Integer getVetId() { return vetId; }
+	public Integer getVetId() {
+		return vetId;
+	}
 
-	public LocalDateTime getStartsAt() { return startsAt; }
+	public LocalDateTime getStartsAt() {
+		return startsAt;
+	}
 
-	public String getDescription() { return description; }
+	public String getDescription() {
+		return description;
+	}
 
 }

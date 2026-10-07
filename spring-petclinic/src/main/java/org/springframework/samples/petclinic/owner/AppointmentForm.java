@@ -26,20 +26,36 @@ public class AppointmentForm {
 	@Size(max = 255)
 	private String description;
 
-	public Integer getVetId() { return vetId; }
+	public Integer getVetId() {
+		return vetId;
+	}
 
-	public void setVetId(Integer vetId) { this.vetId = vetId; }
+	public void setVetId(Integer vetId) {
+		this.vetId = vetId;
+	}
 
-	public LocalDate getDate() { return date; }
+	public LocalDate getDate() {
+		return date;
+	}
 
-	public void setDate(LocalDate date) { this.date = date; }
+	public void setDate(LocalDate date) {
+		this.date = date;
+	}
 
-	public LocalTime getTime() { return time; }
+	public LocalTime getTime() {
+		return time;
+	}
 
-	public void setTime(LocalTime time) { this.time = time; }
+	public void setTime(LocalTime time) {
+		this.time = time;
+	}
 
-	public String getDescription() { return description; }
+	public String getDescription() {
+		return description;
+	}
 
-	public void setDescription(String description) { this.description = description; }
+	public void setDescription(String description) {
+		this.description = description;
+	}
 
 }
