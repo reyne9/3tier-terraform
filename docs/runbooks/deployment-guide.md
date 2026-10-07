@@ -47,3 +47,5 @@ ALB DNS가 준비되면 `codes/aws/1. route53`의 CloudFront Terraform을 적용
 ## 확인할 항목
 
 새 환경에 배포했다면 ALB의 SG가 CloudFront prefix list만 허용하는지, CSI와 IRSA가 Secret을 읽는지, `kubectl top pods`가 동작하는지, 예약 POST가 DB에 저장되는지 확인합니다. Karpenter는 일부러 Pod 용량을 초과시키는 별도 시나리오에서 NodePool/NodeClaim을 확인해야 합니다. 이 저장소에는 새 통합본의 실제 클라우드 검증 기록이 없습니다.
+
+설계 기준은 [Karpenter 설치 안내](https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/), [AWS Secrets Manager CSI와 IRSA](https://docs.aws.amazon.com/secretsmanager/latest/userguide/integrating_ascp_irsa.html), [AWS Load Balancer Controller 보안 그룹](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/security_groups/)입니다.

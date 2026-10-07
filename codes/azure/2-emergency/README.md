@@ -57,6 +57,8 @@ kubectl get pods -A
 
 Terraform의 DB username과 Key Vault secret은 같은 입력값에서 생성됩니다. `deploy-petclinic.sh`가 AKS CSI identity를 사용하는 SecretProviderClass를 만들고 Pod 마운트 시 Kubernetes Secret을 동기화합니다. 비밀번호를 터미널에서 다시 입력할 필요는 없습니다.
 
+AKS add-on identity에 Key Vault Secrets User 역할을 부여하는 방식은 [Azure 공식 CSI identity 안내](https://learn.microsoft.com/en-us/azure/aks/csi-secrets-store-identity-access)를 따릅니다. Secret이 바뀌면 마운트 파일과 동기화된 Kubernetes Secret은 갱신될 수 있지만 Spring의 환경 변수는 Pod를 재시작해야 새 값을 읽습니다.
+
 실제 매니페스트와 Gateway 연결을 함께 적용합니다.
 
 ```bash

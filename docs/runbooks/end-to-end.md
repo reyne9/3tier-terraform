@@ -24,7 +24,7 @@ AWS와 Azure 계정, Terraform 1.14 이상, AWS CLI, Azure CLI, `kubectl`, Helm,
 3. 준비가 끝나면 저장소 변수 `ENABLE_DELIVERY=true`를 설정하고 `petclinic-delivery.yml`을 수동 실행하거나 앱 변경을 `main`에 푸시합니다. 테스트와 Trivy 검사가 통과해야 두 이미지를 커밋 SHA 태그로 게시합니다.
 4. 워크플로가 AWS 매니페스트의 이미지 태그를 같은 저장소에 커밋하면 Argo CD가 동기화합니다. HTTP 확인이 통과한 뒤 `kubectl rollout status`와 Pod 이미지 SHA, `/vets.html` 응답, 예약 POST와 DB 저장을 직접 확인합니다.
 
-`petclinic-verify.yml`의 기존 [성공 기록](https://github.com/reyne9/3tier-terraform/actions/runs/37476071052)은 Maven 테스트와 이미지 빌드에 한정됩니다. 이 문서의 이미지 게시·GitOps·운영 검사는 구성 절차이며 실행 완료 기록이 아닙니다.
+`petclinic-verify.yml` [실행](https://github.com/reyne9/3tier-terraform/actions/runs/37557974495)에서 Maven 테스트와 이미지 빌드가, `petclinic-delivery.yml` [실행](https://github.com/reyne9/3tier-terraform/actions/runs/37557974481)에서 Maven·Trivy가 통과했습니다. `ENABLE_DELIVERY`가 설정되지 않아 이미지 게시·GitOps·운영 검사는 실행되지 않았습니다.
 
 ## 4. 백업과 장애 대응
 

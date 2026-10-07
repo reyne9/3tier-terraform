@@ -1,6 +1,6 @@
 # Terraform 수정 및 검증 기록
 
-> 2026-10-07 추가: PPT 설명에 맞춰 Karpenter, AWS/Azure Secrets Store CSI, CloudFront origin-facing 보안 그룹과 Web egress 정책을 코드에 연결했다. 변경된 AWS service·Route 53·Azure emergency의 Terraform `validate`, 쉘 구문, AWS/Azure Kustomize 빌드가 통과했다. 신규 리소스의 실제 `apply` 및 장애 테스트는 수행하지 않았다. 아래 2026-10-06 기록은 그 날짜의 구성과 결과다.
+> 2026-10-07 추가: PPT 설명에 맞춰 Karpenter, AWS/Azure Secrets Store CSI, CloudFront origin-facing 보안 그룹과 Web egress 정책을 코드에 연결했다. 변경된 AWS service·Route 53·Azure emergency의 Terraform `validate`, 쉘 구문, AWS/Azure Kustomize 빌드가 통과했다. [앱 빌드 CI](https://github.com/reyne9/3tier-terraform/actions/runs/37557974495)와 [Maven·Trivy CI](https://github.com/reyne9/3tier-terraform/actions/runs/37557974481)도 통과했다. 이미지 게시 단계는 설정되지 않아 실행되지 않았고, 신규 리소스의 실제 `apply` 및 장애 테스트도 수행하지 않았다. 아래 2026-10-06 기록은 그 날짜의 구성과 결과다.
 
 > 2026-10-06 재검증: Terraform 1.14.0에서 5개 root의 `fmt -check`와 `validate`, mock `terraform test` 9건이 통과했다. Python 오프라인 회귀 테스트 10건도 통과했다. [GitHub Actions 실행](https://github.com/reyne9/3tier-terraform/actions/runs/37476071052)에서는 Maven 테스트와 Web/WAS 이미지 빌드가 통과했다. 실제 AWS/Azure `apply`, 이미지 레지스트리 푸시와 클라우드 배포는 이번 검증에 포함하지 않았다.
 

@@ -2,9 +2,9 @@
 
 AWS에서 Spring PetClinic을 운영하고, 장애 시 Azure에서 서비스를 복구하는 구성을 코드로 정리한 프로젝트입니다. Terraform 인프라, Kubernetes 매니페스트, Web/WAS 애플리케이션 소스, 백업·복원 스크립트를 한 저장소에서 확인할 수 있습니다.
 
-> **검증 범위** 2026년 10월 현재 이 저장소에서 확인한 것은 오프라인 회귀 테스트와 코드·설정의 정합성입니다. 이번 통합본으로 AWS/Azure를 새로 배포하거나 실제 장애 전환 시간을 측정하지 않았습니다. 과거 배포 기록은 [코드 검증 기록](docs/runbooks/code-validation.md)과 구분해서 읽어 주세요.
+> **검증 범위** 2026년 10월 현재 이 저장소에서 확인한 것은 오프라인 회귀 테스트, 앱 빌드와 보안 검사, 코드·설정의 정합성입니다. 이번 통합본으로 AWS/Azure를 새로 배포하거나 실제 장애 전환 시간을 측정하지 않았습니다. 과거 배포 기록은 [코드 검증 기록](docs/runbooks/code-validation.md)과 구분해서 읽어 주세요.
 
-**재현 가능 범위:** 이 저장소에 PetClinic 예약 소스, Terraform, Kubernetes 매니페스트, 운영 스크립트와 이미지 게시·GitOps 워크플로를 모았습니다. [처음부터 운영까지의 순서](docs/runbooks/end-to-end.md)에 필요한 계정·도메인·인증서·비밀정보와 실행 순서를 적었습니다. 기존에 성공한 CI는 테스트와 이미지 빌드까지입니다. 새 이미지 게시와 클라우드 배포 흐름은 구성했지만 아직 실제 계정에서 실행하지 않았습니다. [PPT 및 구현 대조표](docs/overview/portfolio-claim-check.md)에 근거 수준을 정리했습니다.
+**재현 가능 범위:** 이 저장소에 PetClinic 예약 소스, Terraform, Kubernetes 매니페스트, Karpenter·Secrets Store CSI 설치 스크립트, 운영 스크립트와 이미지 게시·GitOps 워크플로를 모았습니다. [처음부터 운영까지의 순서](docs/runbooks/end-to-end.md)에 필요한 계정·도메인·인증서·비밀정보와 실행 순서를 적었습니다. CI에서 앱 테스트·이미지 빌드·Trivy 검사를 통과했습니다. 새 이미지 게시와 클라우드 배포 흐름은 구성했지만 아직 실제 계정에서 실행하지 않았습니다. [PPT 및 구현 대조표](docs/overview/portfolio-claim-check.md)에 근거 수준을 정리했습니다.
 
 ## 요청 경로와 DR 방식
 
@@ -51,7 +51,7 @@ docker build -f Dockerfile.was -t petclinic-was:local .
 docker build -f Dockerfile.web -t petclinic-web:local .
 ```
 
-[검증 워크플로](.github/workflows/petclinic-verify.yml)는 테스트와 이미지 빌드를 수행합니다. [배포 워크플로](.github/workflows/petclinic-delivery.yml)는 설정을 활성화하면 Maven, Trivy, Buildx, Docker Hub, 같은 저장소의 매니페스트 갱신, Argo CD 자동 동기화, HTTP 확인 순서로 이어집니다. Azure DR 이미지는 [수동 승격 워크플로](.github/workflows/petclinic-promote-azure.yml)로 별도 관리합니다. 새 배포 흐름의 성공 여부는 아직 확인하지 않았습니다.
+[검증 워크플로](.github/workflows/petclinic-verify.yml)는 테스트와 이미지 빌드를 수행합니다. [배포 워크플로](.github/workflows/petclinic-delivery.yml)는 설정을 활성화하면 Maven, Trivy, Buildx, Docker Hub, 같은 저장소의 매니페스트 갱신, Argo CD 자동 동기화, HTTP 확인 순서로 이어집니다. Azure DR 이미지는 [수동 승격 워크플로](.github/workflows/petclinic-promote-azure.yml)로 별도 관리합니다. Maven·Trivy는 CI에서 통과했으며 게시 이후 단계는 아직 실행하지 않았습니다.
 
 ## 문서
 

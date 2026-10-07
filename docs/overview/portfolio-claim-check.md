@@ -8,7 +8,7 @@
 | 4~7, 10쪽: AWS Web/WAS/RDS와 Azure DR | Terraform, Web/WAS 매니페스트, 백업·복원·전환 스크립트 포함 | Terraform 오프라인 검사 기록 있음. 새 통합본의 AWS/Azure 실제 배포는 미확인 |
 | 3, 8쪽: 5분 내 점검 페이지와 24시간 RPO | CloudFront 읽기 요청 Origin Failover, 일일 dump와 Azure Blob 보관 설계 | 목표 수치. 전환 시간과 최종 복구 시각 실측 없음 |
 | 16쪽: HPA와 Karpenter | Web/WAS CPU HPA, metrics-server 설치 스크립트, Karpenter 1.14.1 설치 스크립트와 NodePool/EC2NodeClass 구성 | 코드 구성. 노드 증설 실측 없음 |
-| 18쪽: Maven → Trivy → Buildx → Docker Hub → Git 매니페스트 → Argo CD → 스모크 테스트 | `petclinic-delivery.yml`과 같은 저장소를 추적하는 Argo CD Application을 추가. Docker Hub·GitHub Environment·앱 URL을 설정해야 게시 단계 실행 | 이전 성공 CI는 Maven 테스트·이미지 빌드까지. 새 전달 흐름의 실제 실행은 미확인 |
+| 18쪽: Maven → Trivy → Buildx → Docker Hub → Git 매니페스트 → Argo CD → 스모크 테스트 | `petclinic-delivery.yml`과 같은 저장소를 추적하는 Argo CD Application 구성. Docker Hub·GitHub Environment·앱 URL을 설정해야 게시 단계 실행 | [CI](https://github.com/reyne9/3tier-terraform/actions/runs/37557974481)에서 Maven·Trivy 통과. `ENABLE_DELIVERY` 미설정으로 게시·GitOps·스모크 테스트는 실행되지 않음 |
 | 20~21쪽: NetworkPolicy, CloudFront만 ALB 접근, CSI | Web egress·WAS ingress 정책, CloudFront origin-facing prefix list 전용 ALB 보안 그룹, AWS Secrets Manager·IRSA·CSI와 Azure Key Vault CSI 구성 | CloudFront 서비스 출발지 제한까지 코드 구성. 특정 distribution만 허용하는 인증은 없음. 신규 클라우드 실행 미확인 |
 | 19쪽: Azure MySQL 복원 후 조회·신규 저장 | 복원 절차, Azure 승격 워크플로, 앱 경로 확인이 있음 | 실제 데이터 조회·신규 예약 저장 및 RTO/RPO 측정은 실행 기록 필요 |
 
