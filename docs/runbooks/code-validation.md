@@ -1,12 +1,25 @@
 # Terraform 수정 및 검증 기록
 
+## 2026-10-08 구성 정합성 검사
+
+- Azure MySQL: 위임된 DB 서브넷에 VNet 통합, Private DNS Zone·VNet link, TLS 강제. 공개 DB 방화벽·관리자 IP 입력 제거.
+- Web Service: internal LoadBalancer. Azure 배포 스크립트는 HPA·NetworkPolicy를 포함한 Kustomize 구성을 적용.
+- Argo CD: Azure 예시 리소스 분리, AWS/Azure HPA replica 소유권 유지.
+- GitHub Actions: 기대한 Argo CD revision·health·이미지 태그 확인 후 HTTP 검사. 인프라 검증 워크플로 추가.
+- Terraform 1.14.0: 5개 root validate와 mock plan 테스트 11개 통과.
+- 오프라인 회귀 테스트: 15개 통과. 이전 커밋·이전 이미지·비정상 rollout·HTTP 실패를 성공으로 판정하지 않는 테스트 포함.
+- AWS/Azure Kustomize 생성, 전체 쉘 문법, workflow/Argo CD YAML 파싱, fmt와 diff 공백 검사 통과.
+
+아래 기록은 각 날짜에 실행한 검사와 당시 구성을 보존합니다.
+
+
 > 2026-10-07 추가: PPT 설명에 맞춰 Karpenter, AWS/Azure Secrets Store CSI, CloudFront origin-facing 보안 그룹과 Web egress 정책을 코드에 연결했다. 변경된 AWS service·Route 53·Azure emergency의 Terraform `validate`, 쉘 구문, AWS/Azure Kustomize 빌드가 통과했다. [앱 빌드 CI](https://github.com/reyne9/3tier-terraform/actions/runs/37557974495)와 [Maven·Trivy CI](https://github.com/reyne9/3tier-terraform/actions/runs/37557974481)도 통과했다. 이미지 게시 단계는 설정되지 않아 실행되지 않았고, 신규 리소스의 실제 `apply` 및 장애 테스트도 수행하지 않았다. 아래 2026-10-06 기록은 그 날짜의 구성과 결과다.
 
 > 2026-10-06 재검증: Terraform 1.14.0에서 5개 root의 `fmt -check`와 `validate`, mock `terraform test` 9건이 통과했다. Python 오프라인 회귀 테스트 10건도 통과했다. [GitHub Actions 실행](https://github.com/reyne9/3tier-terraform/actions/runs/37476071052)에서는 Maven 테스트와 Web/WAS 이미지 빌드가 통과했다. 실제 AWS/Azure `apply`, 이미지 레지스트리 푸시와 클라우드 배포는 이번 검증에 포함하지 않았다.
 
 2026-09-22에 기존 AWS Primary / Azure Backup & Restore 구성을 기준으로 수정했습니다. 기능 확장 대신 최초 배포, 정상 요청, 백업·복원, 모니터링을 막는 코드 문제를 처리했습니다. 실제 AWS/Azure apply는 실행하지 않았습니다.
 
-## 수정한 동작
+## 2026-09-22 수정한 동작 (당시 구성)
 
 - CloudFront 정상 모드도 7개 HTTP method를 허용합니다. POST는 AWS로 전달되며 자동 failover하지 않습니다. DR 모드는 Front Door를 직접 선택합니다. 조건부 output의 타입 오류와 리소스 생성 후에만 알 수 있는 값에 의존하던 count를 수정했습니다.
 - Blob의 실제 `primary_web_host`를 사용합니다. Storage endpoint의 `z12` 고정값을 제거했습니다.
@@ -17,7 +30,7 @@
 - 백업 스크립트는 매번 Secrets Manager에서 자격증명을 읽습니다. 특수문자를 shell 코드에 삽입하지 않습니다. dump 실패 시 업로드를 중단하고, 겹친 cron 실행을 막으며, user data 변경 시 EC2를 교체해 실제 초기화가 다시 실행되도록 했습니다.
 - `enable_backup_instance = false`는 EC2와 해당 상태 알람을 생성하지 않습니다. 백업용 IAM·보안 그룹·Secret은 유지합니다. SSH 공개 키는 선택사항이며 비어 있으면 SSM으로 접속합니다. RDS 보관 기간 변수도 실제 리소스에 연결했습니다.
 - RDS ingress를 별도 rule 리소스로 통일했습니다. LB Controller 설치는 chart와 같은 버전의 IAM policy를 사용하며 재실행 시 같은 role을 사용합니다.
-- EKS 삭제 훅은 노드 삭제 전에 Kubernetes Ingress/LoadBalancer Service를 삭제하고 controller 정리를 기다립니다. VPC의 ENI를 강제로 분리하지 않습니다. 삭제 시 `aws`, `kubectl`, `jq`와 해당 클러스터 접근 권한이 필요하며, 기본 리전 외에서는 `AWS_REGION`을 지정합니다.
+- EKS 삭제 훅은 노드 삭제 전에 Kubernetes Ingress/LoadBalancer Service를 삭제하고 controller 정리를 기다립니다. VPC의 ENI를 강제로 분리하지 않습니다. 삭제 시 `aws`, `kubectl`, `jq`와 해당 클러스터 접근 권한이 필요하며, 삭제 훅은 Terraform에 전달한 AWS 리전을 사용합니다.
 - 모니터링은 실제 EKS ASG 이름을 조회합니다. ALB에는 지원되지 않는 `SurgeQueueLength` 대신 `RejectedConnectionCount`를 사용합니다. 기존 Terraform 주소와 임계값 변수명은 유지했습니다. Observability add-on이 먼저 생성한 로그 그룹은 import block으로 인계합니다.
 - Lambda에 빠진 EC2 상태 조회 권한을 추가했습니다. 자신이 발행한 일반 텍스트 알림을 다시 JSON 알람으로 처리하지 않으며 초기화 중인 노드를 비정상 노드로 종료하지 않습니다.
 
@@ -46,7 +59,7 @@ AWS와 Azure의 `db_name`은 기존 데이터베이스 이름으로 맞추세요
 2. AWS `2. service`: Azure Storage 정보와 DB 비밀번호 입력 → init → plan → apply. LB Controller·Secrets Store CSI·Karpenter·metrics-server를 설치하고 Web/WAS 매니페스트를 배포합니다. DB Secret은 CSI 마운트 시 동기화됩니다.
 3. AWS `1. route53`: 기존 Hosted Zone, **us-east-1의 ISSUED ACM 인증서**, 실제 ALB DNS 또는 EKS 이름, Azure Front Door output을 입력하고 적용합니다.
 4. AWS `3. monitoring`: EKS/ALB/RDS/Health Check 정보를 입력하고 적용합니다. Slack 연결은 기존과 같이 사용자가 먼저 완료해야 합니다.
-5. DR 시 Azure `2-emergency`: backend `[]`, port `80`으로 적용합니다. 로컬 복원 PC의 공인 IP는 `admin_ip`에 입력합니다. `restore-db.sh` → `deploy-complete.sh` → 읽기·쓰기·데이터 검증 → 기존 전환 스크립트 순서로 진행합니다.
+5. DR 시 Azure `2-emergency`: backend `[]`, port `80`으로 적용합니다. 복원 작업 환경은 VPN 또는 VNet 내부 runner로 준비합니다. `restore-db.sh` → `deploy-complete.sh` → 읽기·쓰기·데이터 검증 → 기존 전환 스크립트 순서로 진행합니다.
 
 `restore-db.sh`는 Azure CLI 로그인과 Storage Blob Data Reader 권한 또는 환경변수로 전달한 Storage key/SAS가 필요합니다. Terraform에 비밀번호를 입력하는 방법은 기존과 같으며 저장소에 실제 tfvars/state를 커밋하지 않습니다.
 

@@ -47,13 +47,12 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "admin_ip" {
-  description = "관리자 IP 주소 (MySQL 접근 허용)"
+variable "delegated_subnet_id" {
+  description = "MySQL Flexible Server 전용 위임 서브넷 ID"
   type        = string
-  default     = ""
 }
 
-variable "aks_outbound_ip" {
-  description = "AKS에서 실제 사용하는 egress IPv4 주소"
+variable "vnet_id" {
+  description = "Private DNS Zone을 연결할 VNet ID"
   type        = string
 }

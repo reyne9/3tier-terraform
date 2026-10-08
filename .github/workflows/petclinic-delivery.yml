@@ -6,6 +6,7 @@ on:
     paths:
       - 'spring-petclinic/**'
       - '.github/workflows/petclinic-delivery.yml'
+      - 'scripts/check-gitops-deployment.sh'
   workflow_dispatch:
 
 concurrency:
@@ -78,6 +79,8 @@ jobs:
   update-gitops:
     if: github.ref == 'refs/heads/main' && vars.ENABLE_DELIVERY == 'true'
     needs: publish
+    outputs:
+      gitops_revision: ${{ steps.gitops.outputs.revision }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -86,6 +89,7 @@ jobs:
         with:
           ref: main
       - name: Commit AWS image versions
+        id: gitops
         env:
           REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ github.sha }}
@@ -94,8 +98,11 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add 'codes/aws/2. service/k8s-manifests/web/deployment.yaml' 'codes/aws/2. service/k8s-manifests/was/deployment.yaml'
-          git commit -m "Deploy PetClinic images ${IMAGE_TAG} [skip ci]"
+          if ! git diff --cached --quiet; then
+            git commit -m "Deploy PetClinic images ${IMAGE_TAG} [skip ci]"
+          fi
           git push origin HEAD:main
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   smoke-test:
     if: github.ref == 'refs/heads/main' && vars.ENABLE_DELIVERY == 'true'
@@ -103,17 +110,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: aws-production
     steps:
-      - name: Wait for Argo CD rollout and check Web-to-WAS route
+      - uses: actions/checkout@v4
+      - name: Verify Argo CD revision, images and application route
         env:
+          ARGOCD_SERVER: ${{ vars.AWS_ARGOCD_SERVER }}
+          ARGOCD_APP: petclinic-aws
+          ARGOCD_TOKEN: ${{ secrets.AWS_ARGOCD_TOKEN }}
+          GITOPS_REVISION: ${{ needs.update-gitops.outputs.gitops_revision }}
+          REGISTRY_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
           APP_URL: ${{ vars.AWS_APP_URL }}
-        run: |
-          test -n "$APP_URL" || { echo 'Set AWS_APP_URL.' >&2; exit 1; }
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error --max-time 10 "${APP_URL%/}/vets.html" >/dev/null; then
-              echo 'Application route responds.'
-              exit 0
-            fi
-            sleep 20
-          done
-          echo 'Application route did not become healthy within 10 minutes.' >&2
-          exit 1
+        run: bash scripts/check-gitops-deployment.sh

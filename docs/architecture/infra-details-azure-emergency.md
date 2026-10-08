@@ -21,14 +21,15 @@ Resource Group, VNet, Subnet, Storage Account는 `1-always`가 만든 기존 리
 
 - Server: `mysql-dr-${environment}`
 - Database: 기본 `petclinic`
-- 관리자 사용자명: `mysqladmin`으로 validation
+- 관리자 사용자명: 기본 `mysqladmin`, Terraform 변수와 Key Vault에서 동일하게 사용
 - SKU 기본값: `B_Standard_B2s`
 - Storage 기본값: 20GB
-- Public network access: 활성
-- SSL enforcement: 비활성
+- 네트워크: `snet-db` 위임 서브넷에 VNet 통합, 공개 엔드포인트 없음
+- Private DNS: `${environment}.private.mysql.database.azure.com`, VNet link
+- TLS: `require_secure_transport = ON`, JDBC와 복원 client 모두 TLS 사용
 - Backup retention: 7일
 
-현재 DB module은 `1-always`의 위임된 DB Subnet을 전달받지 않는다. 따라서 문서에서 Azure MySQL이 private subnet/private endpoint로 구성됐다고 설명하면 안 된다. Public access와 SSL 설정은 운영 보안 개선 대상이다.
+DB module은 위임된 `snet-db`와 VNet ID를 전달받습니다. DNS link를 먼저 생성한 뒤 MySQL을 배포합니다. Private Endpoint 방식이 아니라 VNet 통합 방식입니다. 복원은 VNet 연결 작업 환경에서 수행하며 인터넷에서 직접 접속하지 않습니다.
 
 ## AKS
 
@@ -59,11 +60,11 @@ Resource Group, VNet, Subnet, Storage Account는 `1-always`가 만든 기존 리
 - Probe: 기본 `/`, 30초, 200–399
 - SSL policy: `AppGwSslPolicy20220101`
 
-첫 apply에서는 `backend_ip_addresses = []`로 Gateway를 생성한다. Web 배포 후 `setup-ingress.sh`가 `web-service`의 External IP를 `backend.auto.tfvars`에 저장하고 Terraform을 다시 적용한다.
+첫 apply에서는 `backend_ip_addresses = []`로 Gateway를 생성한다. Web 배포 후 `setup-ingress.sh`가 `web-service`의 사설 LoadBalancer IP를 `backend.auto.tfvars`에 저장하고 Terraform을 다시 적용한다.
 
 ## Kubernetes Service와 Ingress
 
-- `web-service`: LoadBalancer, port 80
+- `web-service`: internal LoadBalancer, port 80
 - `was-service`: ClusterIP, port 8080
 - 과거 Web Ingress 매니페스트는 참고용이며 현재 배포 스크립트는 적용하지 않음
 
@@ -110,7 +111,6 @@ az aks get-credentials \
 cd scripts
 ./restore-db.sh
 
-export DB_PASSWORD='<Azure MySQL password>'
 ./deploy-complete.sh
 ```
 
@@ -141,5 +141,5 @@ Application Gateway 배포와 backend 검증이 끝난 뒤:
 
 - Gateway를 처음 생성할 때 backend pool은 비어 있다. Web LoadBalancer IP를 받은 뒤 재적용해야 한다.
 - AGIC 설치가 Terraform에 포함되지 않았다.
-- Azure MySQL public access와 SSL 비활성 설정은 운영 기준에 미달한다.
+- DB 복원 환경은 VNet 라우팅과 Private DNS 조회가 필요하다.
 - Application Gateway listener는 HTTP만 구현되어 있다. 사용자 TLS는 Front Door에서 종료되는 흐름을 전제로 설명한다.

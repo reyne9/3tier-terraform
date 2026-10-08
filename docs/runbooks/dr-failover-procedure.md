@@ -73,7 +73,7 @@ terraform apply
 
 ## 5. 최신 dump 복원
 
-Storage Container에서 최신 dump를 선택하고 Azure MySQL에 복원한다. 파일명만 보고 선택하지 말고 생성 시각, 크기, 압축 무결성을 확인한다.
+VNet 연결 작업 환경(VPN 또는 내부 runner)에서 `scripts/restore-db.sh`를 실행한다. Private DNS로 MySQL의 사설 IP를 조회하고 3306 연결을 확인한 뒤 Storage Container에서 최신 dump를 선택하고 Azure MySQL에 복원한다. 파일명만 보고 선택하지 말고 생성 시각, 크기, 압축 무결성을 확인한다.
 
 복원 후 확인:
 
@@ -95,7 +95,7 @@ kubectl get pods -A
 kubectl get svc -A
 ```
 
-WAS LoadBalancer IP를 Application Gateway backend에 반영한 뒤 backend health를 확인한다.
+Web internal LoadBalancer IP를 Application Gateway backend에 반영한 뒤 backend health를 확인한다.
 
 ```bash
 APPGW_IP=$(terraform output -raw appgw_public_ip)

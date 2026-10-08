@@ -68,7 +68,7 @@ Kubernetes와 Load Balancer가 만든 ENI와 Security Group 의존성이 남아 
 
 ## 계층 분리 기반 접근 제어는 어떻게 적용했나요?
 
-Web, WAS, DB를 subnet, node pool, namespace와 Security Group/NSG 규칙으로 분리했습니다. 각 계층은 필요한 다음 계층과 관리 경로만 접근하도록 제한하는 것을 목표로 했습니다. 다만 Azure MySQL의 현재 public access와 비활성 SSL enforcement는 추가 개선 항목으로 명확히 구분합니다.
+Web, WAS, DB를 subnet, node pool, namespace와 Security Group/NSG 규칙으로 분리했습니다. 각 계층은 필요한 다음 계층과 관리 경로만 접근하도록 제한하는 것을 목표로 했습니다. Azure MySQL은 DB 전용 위임 서브넷에 VNet 통합으로 배치하고 Private DNS와 TLS를 사용합니다.
 
 ## ALB Controller의 역할은 무엇인가요?
 

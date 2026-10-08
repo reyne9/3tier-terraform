@@ -81,9 +81,3 @@ resource "azurerm_role_assignment" "vnet" {
   role_definition_name = "Network Contributor"
   principal_id         = azurerm_kubernetes_cluster.main.identity[0].principal_id
 }
-
-# Query the single managed egress IP instead of guessing an Azure IP range.
-data "azurerm_public_ip" "outbound" {
-  name                = basename(one(azurerm_kubernetes_cluster.main.network_profile[0].load_balancer_profile[0].effective_outbound_ips))
-  resource_group_name = azurerm_kubernetes_cluster.main.node_resource_group
-}

@@ -379,10 +379,10 @@ ingressClassName: alb
 - Geo-redundant backup: false
 - Zone: 1
 - Database charset: utf8mb4
-- `require_secure_transport = OFF`
-- Firewall:
-  - AKS outbound IP 대역으로 보이는 `4.230.0.0 ~ 4.230.255.255`
-  - admin IP 선택 허용
+- `require_secure_transport = ON`
+- `snet-db` 위임 서브넷에 VNet 통합
+- Private DNS Zone과 VNet link
+- 공개 엔드포인트와 공인 IP 방화벽 규칙 없음
 
 면접 답변:
 
@@ -390,12 +390,12 @@ ingressClassName: alb
 
 주의할 점:
 
-- `require_secure_transport = OFF`는 운영 보안 기준으로 약점이다.
-- AKS outbound IP 대역을 넓게 허용한 방화벽도 개선 필요.
+- DB 전용 서브넷과 Private DNS를 사용하며 TLS를 강제한다.
+- MySQL은 위임된 DB 서브넷에 배치하고 Private DNS를 연결한다. 공인 IP 방화벽 규칙은 사용하지 않는다.
 
 방어 답변:
 
-> DR 실습에서는 연결성 검증을 우선해 SSL 강제와 방화벽을 완화했습니다. 운영 수준이라면 private endpoint/private DNS, SSL required, 최소 IP 허용, Key Vault 연동으로 개선해야 합니다.
+> Azure MySQL은 VNet 통합으로 DB 전용 서브넷에 배치했습니다. Private DNS로 사설 IP를 조회하고 TLS를 강제하며, AKS는 Key Vault CSI로 연결값을 전달받습니다. 복원은 VNet에 연결된 작업 환경에서 수행합니다.
 
 ### 9.3 Application Gateway
 
@@ -449,7 +449,7 @@ ingressClassName: alb
 
 3. Azure MySQL 보안
 
-> SSL 강제 비활성화와 넓은 firewall rule은 운영 기준으로 개선해야 합니다. Private Endpoint, Private DNS, SSL required, 최소 IP 허용이 필요합니다.
+> DB는 VNet 통합과 Private DNS를 사용하고 TLS를 강제합니다. 복원 작업 환경의 사설망 라우팅과 DNS 조회, DB 연결을 함께 확인해야 합니다.
 
 4. App Gateway backend 자동화
 

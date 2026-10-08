@@ -114,9 +114,12 @@ Blob 기본 endpoint도 HTTPS를 제공하지만, Front Door 도입 목적은 Bl
 
 ### 긴급 계층: `codes/azure/2-emergency`
 
-- Azure MySQL Flexible Server
+- Azure MySQL Flexible Server: `snet-db` VNet 통합, Private DNS Zone·VNet link, TLS 강제
 - AKS Web/WAS node pool
-- Application Gateway
+- Application Gateway → Web internal LoadBalancer → WAS
+- Key Vault와 AKS Secrets Store CSI
+
+DB 복원은 VPN 또는 VNet 내부 runner에서 실행한다.
 
 ## 전환 변수
 

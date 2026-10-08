@@ -1,6 +1,5 @@
 # 처음부터 운영까지: 재현 순서
 
-이 문서는 이 저장소의 코드가 담당하는 범위와 운영자가 준비할 입력을 연결합니다. 새 계정의 AWS/Azure 실제 배포나 장애 전환을 완료했다는 기록은 아닙니다. 배포 전에 비용 한도와 삭제 계획을 정하고 각 `terraform plan`을 검토하세요.
 
 ## 1. 준비
 
@@ -19,12 +18,11 @@ AWS와 Azure 계정, Terraform 1.14 이상, AWS CLI, Azure CLI, `kubectl`, Helm,
 
 ## 3. 앱 이미지와 GitOps
 
-1. GitHub 저장소에 `DOCKERHUB_USERNAME` 변수와 `aws-production` Environment의 `DOCKERHUB_TOKEN`, `AWS_APP_URL`을 설정합니다. 운영 승인 규칙을 사용할 경우 Environment에 등록합니다.
+1. GitHub 저장소에 `DOCKERHUB_USERNAME` 변수, `aws-production` Environment의 `AWS_APP_URL`·`AWS_ARGOCD_SERVER` 변수와 `DOCKERHUB_TOKEN`·read-only `AWS_ARGOCD_TOKEN` secret을 설정합니다. 운영 승인 규칙을 사용할 경우 Environment에 등록합니다.
 2. EKS에 Argo CD를 설치하고 `codes/aws/4-cicd/argocd/application.yaml`을 적용합니다. Application은 이 저장소의 AWS Kustomize 매니페스트를 추적합니다. CSI가 Pod 마운트 시 `db-credentials`를 동기화하며 HPA는 metrics-server의 CPU 메트릭을 사용합니다.
 3. 준비가 끝나면 저장소 변수 `ENABLE_DELIVERY=true`를 설정하고 `petclinic-delivery.yml`을 수동 실행하거나 앱 변경을 `main`에 푸시합니다. 테스트와 Trivy 검사가 통과해야 두 이미지를 커밋 SHA 태그로 게시합니다.
-4. 워크플로가 AWS 매니페스트의 이미지 태그를 같은 저장소에 커밋하면 Argo CD가 동기화합니다. HTTP 확인이 통과한 뒤 `kubectl rollout status`와 Pod 이미지 SHA, `/vets.html` 응답, 예약 POST와 DB 저장을 직접 확인합니다.
+4. 워크플로가 AWS 매니페스트의 이미지 태그를 같은 저장소에 커밋하면 Argo CD가 동기화합니다. Argo CD의 Synced·Healthy, 매니페스트 커밋과 이미지 SHA 확인이 통과한 뒤 `kubectl rollout status`와 Pod 이미지 SHA, `/vets.html` 응답, 예약 POST와 DB 저장을 직접 확인합니다.
 
-`petclinic-verify.yml` [실행](https://github.com/reyne9/3tier-terraform/actions/runs/37557974495)에서 Maven 테스트와 이미지 빌드가, `petclinic-delivery.yml` [실행](https://github.com/reyne9/3tier-terraform/actions/runs/37557974481)에서 Maven·Trivy가 통과했습니다. `ENABLE_DELIVERY`가 설정되지 않아 이미지 게시·GitOps·운영 검사는 실행되지 않았습니다.
 
 ## 4. 백업과 장애 대응
 
@@ -32,4 +30,19 @@ AWS와 Azure 계정, Terraform 1.14 이상, AWS CLI, Azure CLI, `kubectl`, Helm,
 
 장기 장애라면 `codes/azure/2-emergency/README.md`와 [DR 절차서](dr-failover-procedure.md)에 따라 AKS·Azure MySQL·Application Gateway를 준비하고 dump를 복원합니다. AKS Key Vault CSI add-on은 DB 연결값을 Key Vault에서 읽습니다. DB 내용을 확인한 뒤 `petclinic-promote-azure.yml`을 수동 실행해 AWS에서 사용 중인 이미지 태그를 Azure 매니페스트로 승격합니다. AKS Argo CD에는 `codes/azure/4-cicd/argocd/application.yaml`을 적용합니다. 앱의 조회와 신규 예약 저장을 확인한 후 운영자가 CloudFront를 전체 Azure DR 모드로 변경합니다.
 
-5분 내 점검 페이지와 24시간 RPO는 PPT의 목표입니다. 실측 결과로 적으려면 전환 시간, 백업 시각, 복원 데이터와 쓰기 테스트 결과를 실행 기록으로 남겨야 합니다.
+전환 시간, 백업 시각, 복원 데이터와 쓰기 테스트 결과를 실행 기록으로 남깁니다. RPO는 최신 성공한 dump 시각을 기준으로 계산합니다.
+
+## 배포 확인 설정
+
+GitHub Actions는 Argo CD API에서 기대한 매니페스트 커밋이 `Synced`, 앱이 `Healthy`, Web/WAS 이미지가 기대 SHA 태그인지 확인한 다음 HTTP 경로를 검사합니다. 이전 버전의 응답만으로 배포 성공을 판정하지 않습니다.
+
+- AWS: `AWS_ARGOCD_SERVER`, `AWS_APP_URL` variables, `AWS_ARGOCD_TOKEN` secret
+- Azure: `AZURE_ARGOCD_SERVER`, `AZURE_APP_URL` variables, `AZURE_ARGOCD_TOKEN` secret
+- Argo CD 서버는 HTTPS와 신뢰할 수 있는 인증서를 사용하고 Actions runner에서 접근할 수 있어야 합니다. 토큰에는 해당 Application의 조회 권한만 부여합니다.
+- main branch 직접 push를 차단하는 branch protection을 사용하면 GitOps 변경도 PR·승인 절차에 맞게 구성합니다.
+
+## 사설 DB 복원 환경과 기존 서버 이전
+
+Azure MySQL은 `snet-db`에 VNet 통합으로 배치합니다. 복원 작업은 VNet에 연결된 PC(VPN) 또는 내부 runner에서 실행하며 MySQL FQDN의 사설 IP 조회와 TCP 3306 연결이 필요합니다. Azure Cloud Shell은 기본 상태에서 이 VNet으로 연결되지 않습니다.
+
+기존 공개 MySQL 서버에 위임 서브넷을 추가하는 변경은 서버 교체를 요구합니다. 기존 dump를 보존하고 새 사설 서버로 복원한 뒤 행 수·최근 데이터·읽기·쓰기를 확인합니다. `terraform plan`에서 DB 삭제·교체를 확인하고 백업 없이 적용하지 않습니다. 기존 `admin_ip` 입력은 삭제합니다.

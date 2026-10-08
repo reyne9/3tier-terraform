@@ -32,8 +32,8 @@ environment = "prod"
 backend_ip_addresses = []
 backend_port = 80
 
-# 로컬에서 DB 복원을 실행할 때 해당 PC의 공인 IPv4를 입력하세요.
-# admin_ip = "203.0.113.10"
+# DB 복원은 VNet 연결 작업 환경(VPN 또는 내부 runner)에서 실행합니다.
+# 일반 인터넷 접속이나 Azure Cloud Shell만으로는 사설 DB에 연결되지 않습니다.
 
 # Tags
 tags = {

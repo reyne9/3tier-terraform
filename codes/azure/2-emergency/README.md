@@ -23,9 +23,11 @@ terraform plan
 terraform apply
 ```
 
-최초 배포에서는 `backend_ip_addresses = []`, `backend_port = 80`을 사용합니다. AKS 버전은 기본적으로 해당 리전의 권장 버전을 사용하며, 필요하면 `kubernetes_version`을 명시합니다. AWS와 Azure의 `db_name` 및 백업 Container 이름은 같아야 합니다. 로컬에서 복원하려면 `admin_ip`에 해당 PC의 공인 IPv4를 설정합니다.
+최초 배포에서는 `backend_ip_addresses = []`, `backend_port = 80`을 사용합니다. AKS 버전은 기본적으로 해당 리전의 권장 버전을 사용하며, 필요하면 `kubernetes_version`을 명시합니다. AWS와 Azure의 `db_name` 및 백업 Container 이름은 같아야 합니다. MySQL은 `snet-db`에 VNet 통합으로 배치하며 Private DNS Zone을 VNet에 연결합니다. 공개 엔드포인트와 공인 IP 방화벽 규칙은 사용하지 않습니다.
 
-### 2. 최신 dump 복원
+### 2. 사설망에서 최신 dump 복원
+
+복원 명령은 VPN으로 Azure VNet에 연결된 PC 또는 VNet 내부 작업 runner에서 실행합니다. 이 환경에는 Terraform state 접근, Azure CLI, MySQL 8 client, Private DNS 조회와 DB 사설 IP까지의 3306 연결이 필요합니다. Azure Cloud Shell은 기본 상태에서 이 VNet에 연결되지 않습니다. 운영자가 먼저 `nslookup "$(terraform output -raw mysql_fqdn)"`으로 사설 IP 조회를 확인합니다.
 
 ```bash
 # DB_PASSWORD는 터미널에서 입력하거나 환경변수로 전달합니다.
@@ -34,7 +36,7 @@ bash scripts/restore-db.sh
 
 Azure CLI 로그인 계정에는 Storage Blob Data Reader 권한이 필요합니다. 기존 Storage Key를 사용하려면 `AZURE_STORAGE_KEY` 환경변수로 전달합니다.
 
-백업 Container에서 최신 유효 dump를 선택해 Azure MySQL에 복원한다.
+백업 Container에서 최신 유효 dump를 선택해 Azure MySQL에 복원한다. 이미 실행 중인 DR WAS가 있다면 쓰기 트래픽을 차단하고 WAS를 중지한 뒤 복원합니다. Argo CD selfHeal과 HPA가 다시 실행하지 않도록 함께 조정한 뒤, 복원 완료 후 원래 상태로 복귀합니다.
 
 검증:
 
@@ -65,7 +67,7 @@ AKS add-on identity에 Key Vault Secrets User 역할을 부여하는 방식은 [
 bash scripts/deploy-complete.sh
 ```
 
-위 스크립트는 Web/WAS rollout 성공을 확인하고 Web LoadBalancer 주소를 `backend.auto.tfvars`에 저장한 뒤 Terraform으로 Gateway를 갱신합니다. `-auto-approve`를 전달하지 않으면 apply 전에 변경 계획을 확인할 수 있습니다.
+위 스크립트는 HPA·NetworkPolicy를 포함한 Kustomize 구성을 적용하고 Web/WAS rollout 성공을 확인합니다. Web Service는 internal LoadBalancer를 사용합니다. 이후 Web LoadBalancer 주소를 `backend.auto.tfvars`에 저장한 뒤 Terraform으로 Gateway를 갱신합니다. `-auto-approve`를 전달하지 않으면 apply 전에 변경 계획을 확인할 수 있습니다.
 
 ### 4. Application Gateway backend 구성
 
@@ -124,3 +126,7 @@ Terraform 변수, Kubernetes Secret, JDBC URL의 username/password/database를 �
 dump 시점, 복원 로그, row count와 애플리케이션의 실제 연결 DB를 확인한다.
 
 수정 내역, 기존 환경 이전 절차, 로컬 검증 명령은 [코드 검증 기록](../../../docs/runbooks/code-validation.md)을 참고합니다.
+
+## 기존 공개 DB에서 이전
+
+기존 공개 MySQL을 VNet 통합으로 변경하면 Terraform에서 서버 교체가 계획될 수 있습니다. dump와 복원 절차를 먼저 확보하고 `terraform plan`의 DB 삭제·생성 항목을 확인하세요. `admin_ip` 입력과 공개 DB 방화벽 규칙은 더 이상 사용하지 않습니다. 새 사설 DB로 복원한 뒤 Key Vault의 FQDN, 주요 행 수와 읽기·쓰기를 확인합니다.

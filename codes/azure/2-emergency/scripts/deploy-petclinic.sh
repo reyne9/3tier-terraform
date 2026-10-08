@@ -52,7 +52,7 @@ EOF
 kubectl apply -f "$TF_DIR/k8s-manifests/was/service.yaml"
 kubectl apply -f "$TF_DIR/k8s-manifests/was/deployment.yaml"
 kubectl apply -f "$TF_DIR/k8s-manifests/web/service.yaml"
-kubectl apply -f "$TF_DIR/k8s-manifests/web/deployment.yaml"
+kubectl apply -k "$TF_DIR/k8s-manifests"
 kubectl rollout status deployment/was-spring -n was --timeout=600s
 kubectl rollout status deployment/web-nginx -n web --timeout=300s
 echo "Web/WAS 배포 완료. setup-ingress.sh를 실행해 App Gateway를 연결하세요."

@@ -1,6 +1,6 @@
 # 현재 코드 기준 보안 아키텍처
 
-이 문서는 구현된 보안 제어와 개선 항목을 구분한다. WAF, private endpoint, Key Vault처럼 코드에 없는 기능을 구현 완료로 표현하지 않는다.
+이 문서는 구현된 보안 제어와 개선 항목을 구분한다. WAF와 같이 별도 구성이 필요한 기능은 아래 운영 확장 항목으로 구분한다.
 
 ## AWS 네트워크
 
@@ -11,13 +11,13 @@
 - WAS Subnet: EKS WAS node
 - RDS Subnet: RDS MySQL
 
-ALB는 internet-facing이고 80/443을 `0.0.0.0/0`에서 허용한다.
+ALB는 internet-facing이며 HTTP 80을 CloudFront origin-facing 관리형 prefix list에서만 허용한다. 특정 distribution만 식별하려면 추가 origin 인증이 필요하다.
 
 RDS:
 
 - Private subnet group
 - `publicly_accessible = false`
-- 3306 ingress를 EKS cluster security group에서만 허용
+- 3306 ingress는 EKS cluster security group과 백업 인스턴스 security group에서 허용
 - Storage encryption 활성
 - CloudWatch error/general/slow query log export
 
@@ -48,14 +48,15 @@ IRSA/OIDC는 특정 ServiceAccount에 최소 권한을 연결하는 용도로 �
 - Viewer protocol: HTTPS redirect
 - TLS 최소 버전: `TLSv1.2_2021`
 - ACM 인증서는 `us-east-1`에서 조회
-- Origin protocol: HTTPS only
+- AWS ALB Origin: HTTP
+- Azure Front Door Origin: HTTPS
 
 ### Azure Front Door
 
 - HTTP/HTTPS route
 - HTTPS redirect 활성
 - Custom domain 사용 시 managed certificate, TLS 1.2
-- AWS ALB/Blob Origin은 certificate name check 활성
+- Blob Origin은 certificate name check 활성
 - Application Gateway Origin은 IP를 사용하므로 certificate name check 비활성
 
 Front Door는 CloudFront의 상시 Azure Origin이다. maintenance mode에서는 Blob까지 HTTPS를 사용하고, azure_service mode에서는 현재 App Gateway HTTP listener에 맞춰 Front Door 이후 구간이 HTTP다.
@@ -73,28 +74,25 @@ Front Door는 CloudFront의 상시 Azure Origin이다. maintenance mode에서는
 
 - Blob versioning 활성
 - Backup lifecycle 적용
-- 현재 `https_traffic_only_enabled = false`
+- `https_traffic_only_enabled = true`
 
 ### Azure MySQL
 
-현재 구현:
-
-- Public network 경로 사용
-- `require_secure_transport = OFF`
-- `4.230.0.0/16` firewall rule
-- 관리자 IP 선택 허용
+- MySQL 전용 위임 서브넷 `snet-db`에 VNet 통합
+- Private DNS Zone과 VNet link로 DB FQDN을 사설 IP로 조회
+- 공개 DB 엔드포인트와 공인 IP 방화벽 규칙 없음
+- `require_secure_transport = ON`; JDBC와 복원 client는 TLS 사용
 - 7일 backup retention
-
-따라서 Azure MySQL private endpoint, private DNS, SSL 강제는 개선안이지 구현 완료 항목이 아니다.
+- 복원은 VNet 연결 작업 환경에서 수행
 
 ## Secret 관리
 
 Terraform variable에는 `sensitive = true`가 적용된 값이 있지만 값은 Terraform state에 남을 수 있다. Kubernetes Secret도 base64 encoding이지 암호화 저장을 자동 보장하지 않는다.
 
-운영 개선:
+구현된 DB secret 전달은 AWS Secrets Manager + WAS IRSA/CSI, Azure Key Vault + AKS CSI identity를 사용한다. 환경 변수에 반영하려면 비밀번호 교체 후 WAS Pod를 재시작한다.
 
-- AWS Secrets Manager 또는 SSM Parameter Store
-- Azure Key Vault
+추가 운영 설정:
+
 - Terraform remote backend encryption/locking
 - CI/CD secret
 - Kubernetes secret encryption at rest
@@ -106,16 +104,12 @@ Terraform variable에는 `sensitive = true`가 적용된 값이 있지만 값은
 - AWS WAF Web ACL 연결
 - Azure Front Door WAF policy
 - Azure Application Gateway WAF_v2
-- Azure MySQL private endpoint/private DNS
 - Azure Front Door diagnostic setting
 - CloudTrail/Activity Log를 프로젝트 코드에서 별도 생성하는 구성
 
 ## 우선 개선 순서
 
 1. EKS public endpoint CIDR 제한
-2. Azure MySQL SSL 강제와 허용 대역 축소
-3. Storage HTTPS-only
-4. Secret Manager/Key Vault 연동
-5. Terraform remote state
-6. Front Door/CloudFront WAF와 diagnostic log
-7. Application Gateway backend 연결 자동화
+2. Terraform remote state 암호화·잠금
+3. Front Door/CloudFront WAF와 diagnostic log
+4. Front Door → Application Gateway TLS

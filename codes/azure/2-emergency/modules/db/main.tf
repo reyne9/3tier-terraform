@@ -7,6 +7,11 @@ resource "azurerm_mysql_flexible_server" "main" {
   administrator_login    = var.db_username
   administrator_password = var.db_password
 
+  delegated_subnet_id = var.delegated_subnet_id
+  private_dns_zone_id = azurerm_private_dns_zone.mysql.id
+
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.mysql]
+
   sku_name = var.mysql_sku
   version  = "8.0.21"
 
@@ -31,29 +36,25 @@ resource "azurerm_mysql_flexible_database" "main" {
   collation           = "utf8mb4_unicode_ci"
 }
 
-# MySQL 서버 설정 - SSL 요구사항 비활성화
+# Require TLS even on the private network.
 resource "azurerm_mysql_flexible_server_configuration" "require_secure_transport" {
   name                = "require_secure_transport"
   resource_group_name = var.resource_group_name
   server_name         = azurerm_mysql_flexible_server.main.name
-  value               = "OFF"
+  value               = "ON"
 }
 
-# MySQL 방화벽 규칙 - AKS Outbound IP 대역 허용
-resource "azurerm_mysql_flexible_server_firewall_rule" "aks_subnet" {
-  name                = "AllowAKSSubnet"
+resource "azurerm_private_dns_zone" "mysql" {
+  name                = "${var.environment}.private.mysql.database.azure.com"
   resource_group_name = var.resource_group_name
-  server_name         = azurerm_mysql_flexible_server.main.name
-  start_ip_address    = var.aks_outbound_ip
-  end_ip_address      = var.aks_outbound_ip
+  tags                = var.tags
 }
 
-# MySQL 방화벽 규칙 - 현재 관리자 IP 허용 (선택사항)
-resource "azurerm_mysql_flexible_server_firewall_rule" "admin_ip" {
-  count               = var.admin_ip != "" ? 1 : 0
-  name                = "AllowAdminIP"
-  resource_group_name = var.resource_group_name
-  server_name         = azurerm_mysql_flexible_server.main.name
-  start_ip_address    = var.admin_ip
-  end_ip_address      = var.admin_ip
+resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
+  name                  = "mysql-${var.environment}"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.mysql.name
+  virtual_network_id    = var.vnet_id
+  registration_enabled  = false
+  tags                  = var.tags
 }

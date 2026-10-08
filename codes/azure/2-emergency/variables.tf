@@ -44,15 +44,11 @@ variable "db_name" {
 }
 
 variable "db_username" {
-  description = "MySQL 관리자 사용자명 (Azure MySQL Flexible Server는 'mysqladmin' 사용)"
+  description = "MySQL 관리자 사용자명"
   type        = string
   default     = "mysqladmin"
   sensitive   = true
 
-  validation {
-    condition     = var.db_username == "mysqladmin"
-    error_message = "Azure MySQL Flexible Server는 관리자 사용자명으로 'mysqladmin'을 사용해야 합니다. K8s Secret 생성 시 동일한 사용자명을 사용하세요."
-  }
 }
 
 variable "db_password" {
@@ -157,12 +153,6 @@ variable "tags" {
     Phase       = "Full-Failover"
     ManagedBy   = "Terraform"
   }
-}
-
-variable "admin_ip" {
-  description = "관리자 IP 주소 (MySQL 접근 허용, 비어있으면 규칙 생성 안함)"
-  type        = string
-  default     = ""
 }
 
 variable "backup_container_name" {

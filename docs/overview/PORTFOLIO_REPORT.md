@@ -115,7 +115,7 @@ Kubernetes가 생성한 Load Balancer, ENI, Security Group 의존성이 남아 �
 - CloudFront에서 Front Door HTTPS
 - maintenance mode Front Door에서 Blob HTTPS
 
-현재 Application Gateway listener는 HTTP 80이고 Azure MySQL public access/SSL 설정도 개선 여지가 있다. 구현된 보안과 향후 개선을 구분해 설명한다.
+Azure MySQL은 위임된 DB 서브넷과 Private DNS Zone을 사용하며 TLS를 강제한다. Application Gateway listener는 HTTP 80이다. Front Door 이후 TLS 확장은 별도 운영 개선 항목이다.
 
 ## 운영 명령
 

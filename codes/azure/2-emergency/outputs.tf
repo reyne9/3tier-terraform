@@ -162,3 +162,7 @@ output "storage_account_name" {
 output "backup_container_name" {
   value = var.backup_container_name
 }
+
+output "mysql_private_dns_zone" {
+  value = module.db.private_dns_zone_name
+}

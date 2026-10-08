@@ -75,13 +75,13 @@ module "db" {
   location            = data.azurerm_resource_group.main.location
   resource_group_name = data.azurerm_resource_group.main.name
 
-  db_name          = var.db_name
-  db_username      = var.db_username
-  db_password      = var.db_password
-  mysql_sku        = var.mysql_sku
-  mysql_storage_gb = var.mysql_storage_gb
-  admin_ip         = var.admin_ip
-  aks_outbound_ip  = module.aks.outbound_ip_address
+  db_name             = var.db_name
+  db_username         = var.db_username
+  db_password         = var.db_password
+  mysql_sku           = var.mysql_sku
+  mysql_storage_gb    = var.mysql_storage_gb
+  delegated_subnet_id = data.azurerm_subnet.db.id
+  vnet_id             = data.azurerm_virtual_network.main.id
 
   tags = var.tags
 }

@@ -1,0 +1,38 @@
+name: Verify infrastructure and operating scripts
+
+on:
+  push:
+    paths: ['codes/**', 'scripts/**', 'tests/**', '.github/workflows/infrastructure-verify.yml']
+  pull_request:
+    paths: ['codes/**', 'scripts/**', 'tests/**', '.github/workflows/infrastructure-verify.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14.0'
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.34.0'
+      - name: Verify backup, restore, GitOps checks and shell syntax
+        run: python3 -m unittest discover -s tests -v
+      - name: Terraform format, schema and mock plans
+        run: |
+          terraform fmt -check -recursive codes
+          for dir in 'codes/aws/1. route53' 'codes/aws/2. service' \
+            'codes/aws/3. monitoring' 'codes/azure/1-always' 'codes/azure/2-emergency'; do
+            terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+            terraform -chdir="$dir" test
+          done
+      - name: Render GitOps manifests
+        run: |
+          kubectl kustomize 'codes/aws/2. service/k8s-manifests' > /tmp/aws-manifests.yaml
+          kubectl kustomize codes/azure/2-emergency/k8s-manifests > /tmp/azure-manifests.yaml
