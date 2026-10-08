@@ -3,7 +3,6 @@
 *.tfstate.*
 *.tfplan
 .terraform/
-.terraform.lock.hcl
 
 # Lambda generated zip files
 lambda/auto_recovery_generated.zip
