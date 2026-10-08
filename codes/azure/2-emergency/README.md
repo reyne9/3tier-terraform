@@ -130,3 +130,5 @@ dump 시점, 복원 로그, row count와 애플리케이션의 실제 연결 DB�
 ## 기존 공개 DB에서 이전
 
 기존 공개 MySQL을 VNet 통합으로 변경하면 Terraform에서 서버 교체가 계획될 수 있습니다. dump와 복원 절차를 먼저 확보하고 `terraform plan`의 DB 삭제·생성 항목을 확인하세요. `admin_ip` 입력과 공개 DB 방화벽 규칙은 더 이상 사용하지 않습니다. 새 사설 DB로 복원한 뒤 Key Vault의 FQDN, 주요 행 수와 읽기·쓰기를 확인합니다.
+
+기존 공개 Web LoadBalancer를 internal로 변경하면 Service 주소가 바뀔 수 있습니다. 변경 시간에 `scripts/setup-ingress.sh`를 다시 실행해 새 사설 IP를 Application Gateway backend에 반영하고 Gateway 응답을 확인합니다.

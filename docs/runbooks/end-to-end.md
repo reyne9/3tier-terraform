@@ -46,3 +46,5 @@ GitHub Actions는 Argo CD API에서 기대한 매니페스트 커밋이 `Synced`
 Azure MySQL은 `snet-db`에 VNet 통합으로 배치합니다. 복원 작업은 VNet에 연결된 PC(VPN) 또는 내부 runner에서 실행하며 MySQL FQDN의 사설 IP 조회와 TCP 3306 연결이 필요합니다. Azure Cloud Shell은 기본 상태에서 이 VNet으로 연결되지 않습니다.
 
 기존 공개 MySQL 서버에 위임 서브넷을 추가하는 변경은 서버 교체를 요구합니다. 기존 dump를 보존하고 새 사설 서버로 복원한 뒤 행 수·최근 데이터·읽기·쓰기를 확인합니다. `terraform plan`에서 DB 삭제·교체를 확인하고 백업 없이 적용하지 않습니다. 기존 `admin_ip` 입력은 삭제합니다.
+
+기존 Web Service를 internal LoadBalancer로 전환하면 IP가 바뀔 수 있습니다. `scripts/setup-ingress.sh`로 Application Gateway backend를 새 사설 IP로 갱신하고 응답을 확인합니다. 이 변경은 서비스 전환 시간에 수행합니다.
