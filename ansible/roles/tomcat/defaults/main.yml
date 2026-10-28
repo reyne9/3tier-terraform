@@ -1,0 +1,17 @@
+---
+was_port: 8080
+java_package: openjdk-17-jre-headless
+app_user: petclinic
+app_group: petclinic
+app_dir: /opt/petclinic
+app_jar_name: spring-petclinic.jar
+app_log_dir: /var/log/petclinic
+
+# Database variables
+db_host: "127.0.0.1"
+db_port: 3306
+db_name: petclinic
+db_user: petclinic
+db_password: "CHANGE_ME"
+active_profile: mysql
+jvm_memory_opts: "-Xms512m -Xmx1024m"

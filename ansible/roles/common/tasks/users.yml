@@ -1,0 +1,22 @@
+---
+- name: Ensure deployer group exists
+  ansible.builtin.group:
+    name: "{{ deploy_user }}"
+    state: present
+
+- name: Create deployer user with sudo privileges
+  ansible.builtin.user:
+    name: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    groups: sudo
+    append: yes
+    shell: "{{ deploy_user_shell }}"
+    state: present
+    create_home: yes
+
+- name: Configure passwordless sudo for deployer user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ deploy_user }}"
+    content: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: '0440'
+    validate: 'visudo -cf %s'

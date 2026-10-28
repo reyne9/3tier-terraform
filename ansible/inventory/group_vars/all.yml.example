@@ -1,0 +1,16 @@
+---
+# 모든 호스트 공통 변수 예시
+app_name: petclinic
+deploy_user: deployer
+deploy_user_shell: /bin/bash
+
+# SSH 보안 하드닝 설정
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_pub_key_path: "~/.ssh/id_rsa.pub"
+
+# Prometheus node_exporter 버전
+node_exporter_version: "1.8.2"
+node_exporter_port: 9100
+node_exporter_arch: "amd64" # arm64 또는 amd64

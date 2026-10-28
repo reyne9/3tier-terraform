@@ -1,0 +1,22 @@
+# Terraform으로 프로비저닝된 인스턴스 IP를 매핑하는 Ansible 인벤토리 예시
+# 실제 사용 시 hosts.ini로 복사 후 환경에 맞는 IP 및 SSH 키 경로를 지정합니다.
+
+[webservers]
+web01 ansible_host=10.0.1.10 ansible_user=ubuntu
+# web02 ansible_host=10.0.1.11 ansible_user=ubuntu
+
+[wasservers]
+was01 ansible_host=10.0.2.10 ansible_user=ubuntu
+# was02 ansible_host=10.0.2.11 ansible_user=ubuntu
+
+[dbservers]
+# RDS 또는 온프레미스 MySQL 서버 (선택 사항)
+# db01 ansible_host=10.0.3.10 ansible_user=ubuntu
+
+[petclinic:children]
+webservers
+wasservers
+
+[petclinic:vars]
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_python_interpreter=/usr/bin/python3

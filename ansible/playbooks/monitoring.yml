@@ -1,0 +1,6 @@
+---
+- name: Deploy Prometheus node_exporter across all servers
+  hosts: petclinic
+  become: yes
+  roles:
+    - node_exporter

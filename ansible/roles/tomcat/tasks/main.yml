@@ -1,0 +1,60 @@
+---
+- name: Install Java runtime package
+  ansible.builtin.package:
+    name: "{{ java_package }}"
+    state: present
+
+- name: Create petclinic group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: yes
+    state: present
+
+- name: Create petclinic user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    home: "{{ app_dir }}"
+    create_home: no
+    state: present
+
+- name: Ensure application and log directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_log_dir }}"
+
+- name: Deploy systemd unit file for PetClinic WAS
+  ansible.builtin.template:
+    src: petclinic.service.j2
+    dest: /etc/systemd/system/petclinic.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart petclinic
+
+- name: Allow WAS port through UFW firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ was_port | string }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Check if application jar file exists
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/{{ app_jar_name }}"
+  register: jar_file_stat
+
+- name: Enable and start PetClinic service if jar is present
+  ansible.builtin.service:
+    name: petclinic
+    state: started
+    enabled: yes
+  when: jar_file_stat.stat.exists

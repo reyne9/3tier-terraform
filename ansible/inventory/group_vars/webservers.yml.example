@@ -1,0 +1,7 @@
+---
+# Web(Nginx) 서버 변수 예시
+nginx_port: 80
+nginx_upstream_was_host: "10.0.2.10"
+nginx_upstream_was_port: 8080
+server_domain: "_"
+client_max_body_size: "10M"

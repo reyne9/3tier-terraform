@@ -1,0 +1,6 @@
+---
+- name: Apply common configurations and security hardening to all servers
+  hosts: petclinic
+  become: yes
+  roles:
+    - common

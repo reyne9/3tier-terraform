@@ -1,0 +1,13 @@
+# Ansible local overrides
+hosts.ini
+inventory/hosts.ini
+*.retry
+.vault_pass
+vault_password.txt
+*.key
+*.pem
+id_rsa*
+group_vars/*.yml
+!group_vars/*.yml.example
+host_vars/*.yml
+!host_vars/*.yml.example

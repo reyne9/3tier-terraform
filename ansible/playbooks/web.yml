@@ -1,0 +1,6 @@
+---
+- name: Configure and deploy Nginx reverse proxy on Web servers
+  hosts: webservers
+  become: yes
+  roles:
+    - nginx

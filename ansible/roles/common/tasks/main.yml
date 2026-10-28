@@ -1,0 +1,9 @@
+---
+- name: Include package installation tasks
+  ansible.builtin.include_tasks: packages.yml
+
+- name: Include user management tasks
+  ansible.builtin.include_tasks: users.yml
+
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh_hardening.yml

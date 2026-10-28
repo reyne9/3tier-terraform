@@ -1,0 +1,19 @@
+---
+common_packages:
+  - curl
+  - wget
+  - git
+  - htop
+  - net-tools
+  - ufw
+  - fail2ban
+  - ca-certificates
+  - tar
+  - unzip
+  - jq
+
+deploy_user: deployer
+deploy_user_shell: /bin/bash
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"

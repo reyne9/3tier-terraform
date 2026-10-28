@@ -1,0 +1,66 @@
+---
+- name: Create node_exporter system group
+  ansible.builtin.group:
+    name: "{{ node_exporter_group }}"
+    system: yes
+    state: present
+
+- name: Create node_exporter system user
+  ansible.builtin.user:
+    name: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+    state: present
+
+- name: Check if node_exporter binary exists
+  ansible.builtin.stat:
+    path: "{{ node_exporter_bin_dir }}/node_exporter"
+  register: node_exporter_bin
+
+- name: Download and extract node_exporter binary
+  ansible.builtin.unarchive:
+    src: "{{ node_exporter_download_url }}"
+    dest: /tmp
+    remote_src: yes
+  when: not node_exporter_bin.stat.exists
+
+- name: Copy node_exporter binary to install directory
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+    dest: "{{ node_exporter_bin_dir }}/node_exporter"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+  when: not node_exporter_bin.stat.exists
+  notify: restart node_exporter
+
+- name: Clean up temporary extraction directory
+  ansible.builtin.file:
+    path: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}"
+    state: absent
+  when: not node_exporter_bin.stat.exists
+
+- name: Deploy systemd unit file for node_exporter
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart node_exporter
+
+- name: Allow node_exporter port through UFW firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ node_exporter_port | string }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+
+- name: Ensure node_exporter service is started and enabled
+  ansible.builtin.service:
+    name: node_exporter
+    state: started
+    enabled: yes

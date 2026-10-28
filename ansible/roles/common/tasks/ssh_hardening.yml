@@ -1,0 +1,45 @@
+---
+- name: Ensure /etc/ssh/sshd_config.d directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Apply SSH hardening configuration
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      # CIS/보안 권고 기반 SSH 하드닝 설정
+      Port {{ ssh_port }}
+      PermitRootLogin {{ ssh_permit_root_login }}
+      PasswordAuthentication {{ ssh_password_authentication }}
+      PubkeyAuthentication yes
+      MaxAuthTries 4
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      X11Forwarding no
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+
+- name: Ensure PermitRootLogin is hardened in main sshd_config fallback
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    state: present
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+
+- name: Ensure PasswordAuthentication is hardened in main sshd_config fallback
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    state: present
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd

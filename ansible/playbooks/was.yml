@@ -1,0 +1,6 @@
+---
+- name: Configure and deploy PetClinic Spring Boot WAS service
+  hosts: wasservers
+  become: yes
+  roles:
+    - tomcat

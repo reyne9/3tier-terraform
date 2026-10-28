@@ -1,0 +1,14 @@
+---
+# WAS(Spring Boot / Tomcat) 서버 변수 예시
+was_port: 8080
+java_package: openjdk-17-jdk
+app_install_dir: /opt/petclinic
+app_jar_name: spring-petclinic.jar
+
+# DB 연결 정보 (비밀번호는 Vault 권장, 여기서는 예시 플레이스홀더)
+db_host: "10.0.3.10"
+db_port: 3306
+db_name: petclinic
+db_user: petclinic
+db_password: "CHANGE_ME_IN_PRODUCTION"
+active_profile: mysql
