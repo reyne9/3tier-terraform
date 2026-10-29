@@ -1,0 +1,60 @@
+groups:
+  - name: host_alerts
+    rules:
+      # 1. 인스턴스 다운 (Healthcheck 실패)
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "인스턴스 다운 감지: {{ $labels.instance }}"
+          description: "{{ $labels.role }} 계층의 인스턴스 {{ $labels.instance }} ({{ $labels.job }})가 1분 이상 응답하지 않습니다. 즉각적인 조치가 필요합니다."
+
+      # 2. CPU 고갈 경고 (Warning & Critical)
+      - alert: HostHighCpuLoadWarning
+        expr: (100 - (avg by (instance, role) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU 사용률 경고: {{ $labels.instance }}"
+          description: "{{ $labels.role }} 계층의 {{ $labels.instance }} CPU 사용률이 5분 동안 80%를 초과했습니다. (현재값: {{ $value | printf \"%.2f\" }}%)"
+
+      - alert: HostHighCpuLoadCritical
+        expr: (100 - (avg by (instance, role) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 90
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPU 사용률 위험: {{ $labels.instance }}"
+          description: "{{ $labels.role }} 계층의 {{ $labels.instance }} CPU 사용률이 3분 동안 90%를 초과했습니다. 시스템 지연 위험이 높습니다. (현재값: {{ $value | printf \"%.2f\" }}%)"
+
+      # 3. 디스크 공간 부족 경고 (Disk Space Low)
+      - alert: HostDiskSpaceWarning
+        expr: ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "디스크 잔여 공간 경고: {{ $labels.instance }}"
+          description: "{{ $labels.instance }}의 루트 마운트(/) 잔여 공간이 20% 미만입니다. (현재 잔여: {{ $value | printf \"%.2f\" }}%)"
+
+      - alert: HostDiskSpaceCritical
+        expr: ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) < 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "디스크 잔여 공간 위험: {{ $labels.instance }}"
+          description: "{{ $labels.instance }}의 루트 마운트(/) 잔여 공간이 10% 미만입니다. 즉시 디스크 정리가 필요합니다. (현재 잔여: {{ $value | printf \"%.2f\" }}%)"
+
+      # 4. 메모리 부족 경고
+      - alert: HostMemoryUnderPressure
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "메모리 부족 경고: {{ $labels.instance }}"
+          description: "{{ $labels.role }} 계층의 {{ $labels.instance }} 메모리 사용률이 90%를 초과했습니다. (현재값: {{ $value | printf \"%.2f\" }}%)"
