@@ -64,4 +64,4 @@ docker build -f Dockerfile.web -t petclinic-web:local .
 - [DR 절차서](docs/runbooks/dr-failover-procedure.md): 백업 복원과 서비스 전환 순서
 - [포트폴리오 다이어그램](docs/interview-prep/architecture-slides/): 구성 설명 자료
 
-RTO·RPO와 비용은 환경, 백업 주기, 실제 복원 결과에 따라 달라집니다. 운영 가이드에서 백업 시점, 복원 완료 시점과 읽기·쓰기 확인 시점을 기록합니다.
+설계 목표는 **장애 직후 점검 페이지 자동 전환 5분 이내**(CloudFront 읽기 요청 우회), **전체 서비스 복구 목표(RTO) 1시간 이내**(관리자 승인 후 Azure 인프라 배포·복원·검증), **복구 시점 목표(RPO) 24시간 이내**(일 1회 `mysqldump` 소산 백업)입니다. 실제 RTO·RPO와 비용은 환경, 백업 주기, 실제 복원 결과에 따라 달라지므로 운영 가이드에서 백업 시점, 복원 완료 시점과 읽기·쓰기 확인 시점을 기록합니다.
