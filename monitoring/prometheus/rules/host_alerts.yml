@@ -51,10 +51,10 @@ groups:
 
       # 4. 메모리 부족 경고
       - alert: HostMemoryUnderPressure
-        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 90
+        expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "메모리 부족 경고: {{ $labels.instance }}"
-          description: "{{ $labels.role }} 계층의 {{ $labels.instance }} 메모리 사용률이 90%를 초과했습니다. (현재값: {{ $value | printf \"%.2f\" }}%)"
+          description: "{{ $labels.role }} 계층의 {{ $labels.instance }} 메모리 사용률이 85%를 초과했습니다. (현재값: {{ $value | printf \"%.2f\" }}%)"

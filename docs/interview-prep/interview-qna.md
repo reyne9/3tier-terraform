@@ -62,7 +62,7 @@ CloudFront는 사용자 도메인의 공통 진입점과 트래픽 상태를 관
 
 ## Application Gateway 502는 어떻게 해결했나요?
 
-초기 backend IP가 AKS의 현재 WAS LoadBalancer IP와 달라 health probe가 실패했습니다. Service의 최신 External IP를 다시 조회해 backend pool과 probe를 갱신하고 backend health를 확인했습니다. 이 경험을 통해 동적으로 할당되는 주소를 고정값처럼 다루면 안 된다는 점을 배웠습니다.
+초기 backend 풀 주소와 상태 프로브 경로/포트가 AKS의 현재 Web LoadBalancer IP 및 Nginx `/health`(HTTP 80) 설정과 달라 health probe가 실패했습니다. Service의 최신 LoadBalancer IP를 다시 조회해 backend pool과 HTTP 80 `/health` probe를 갱신하고 backend health를 확인했습니다. 이 경험을 통해 동적으로 할당되는 주소를 고정값처럼 다루면 안 된다는 점을 배웠습니다.
 
 ## Azure MySQL 인증 오류는 무엇이었나요?
 

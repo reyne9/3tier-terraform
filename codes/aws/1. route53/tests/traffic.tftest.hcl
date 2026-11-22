@@ -23,8 +23,8 @@ variables {
 run "normal_allows_writes_and_keeps_failover" {
   command = plan
   assert {
-    condition     = contains(aws_cloudfront_distribution.main[0].default_cache_behavior[0].allowed_methods, "POST") && aws_cloudfront_distribution.main[0].default_cache_behavior[0].target_origin_id == "multi-cloud-failover-group"
-    error_message = "Normal mode must forward writes to AWS while retaining origin failover."
+    condition     = contains(aws_cloudfront_distribution.main[0].default_cache_behavior[0].allowed_methods, "POST") && aws_cloudfront_distribution.main[0].default_cache_behavior[0].target_origin_id == "multi-cloud-failover-group" && length(aws_wafv2_web_acl.cloudfront) == 1
+    error_message = "Normal mode must forward writes to AWS while retaining origin failover and edge WAF."
   }
 }
 run "dr_routes_writes_to_frontdoor" {

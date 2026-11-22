@@ -97,7 +97,7 @@ Blob endpoint 자체도 HTTPS를 제공하지만, 점검 페이지와 전체 Azu
 
 ### Application Gateway 502
 
-AKS WAS LoadBalancer IP가 바뀌었지만 Application Gateway backend가 이전 IP를 가리켰다. 최신 External IP를 다시 조회하고 backend pool과 health probe를 갱신했다.
+AKS Web LoadBalancer IP가 바뀌었지만 Application Gateway backend가 이전 IP를 가리켰다. 최신 External IP(또는 internal LoadBalancer IP)를 다시 조회하고 backend pool과 `/health` health probe를 갱신했다.
 
 ### Azure MySQL 인증 실패
 

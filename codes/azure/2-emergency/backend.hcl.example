@@ -1,0 +1,5 @@
+# terraform init -backend-config=backend.hcl.example (실제 값으로 복사 후 사용)
+resource_group_name  = "your-tfstate-rg"
+storage_account_name = "yourtfstateaccount"
+container_name       = "tfstate"
+key                  = "azure/2-emergency/terraform.tfstate"

@@ -66,7 +66,7 @@ monitoring/
 | **`HostHighCpuLoadCritical`**| CPU 사용률 > 90% for 3m | **Critical** | 즉각적인 스케일아웃 또는 프로세스 확인이 필요한 고갈 상태 |
 | **`HostDiskSpaceWarning`**   | 루트 디스크 잔여량 < 20% for 5m | Warning | 로그 폭증이나 임시 파일 축적으로 인한 디스크 경고 |
 | **`HostDiskSpaceCritical`**  | 루트 디스크 잔여량 < 10% for 2m | **Critical** | I/O 장애 및 DB 락다운을 유발할 수 있는 디스크 고갈 임박 |
-| **`HostMemoryUnderPressure`**| 메모리 사용률 > 90% for 5m | Warning | OOM(Out of Memory) Killer 작동 위험 예방 |
+| **`HostMemoryUnderPressure`**| 메모리 사용률 > 85% for 5m | Warning | OOM(Out of Memory) Killer 작동 위험 예방 |
 
 ---
 

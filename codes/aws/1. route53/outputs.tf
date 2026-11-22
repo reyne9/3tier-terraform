@@ -51,6 +51,11 @@ output "cloudfront_status" {
   value       = var.enable_custom_domain ? aws_cloudfront_distribution.main[0].status : "Not deployed"
 }
 
+output "waf_web_acl_arn" {
+  description = "CloudFront에 연결된 AWS WAFv2 Web ACL ARN"
+  value       = var.enable_custom_domain && var.enable_waf ? aws_wafv2_web_acl.cloudfront[0].arn : ""
+}
+
 # =================================================
 # Origin Failover 설정 정보
 # =================================================

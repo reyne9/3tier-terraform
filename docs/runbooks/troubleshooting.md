@@ -94,12 +94,12 @@ terraform -chdir=codes/azure/2-emergency output -raw appgw_public_ip
 
 가능한 원인:
 
-- `backend_ip_addresses`가 현재 WAS LoadBalancer IP와 다름
+- `backend_ip_addresses`가 현재 Web LoadBalancer IP와 다름
 - health probe path/port 불일치
-- AKS Service External IP 변경
+- AKS Service LoadBalancer IP 변경
 
 ```bash
-WAS_LB_IP=$(kubectl get svc -n was was-service \
+WEB_LB_IP=$(kubectl get svc -n web web-service \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 az network application-gateway show-backend-health \

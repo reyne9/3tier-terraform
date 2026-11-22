@@ -141,7 +141,7 @@ variable "backend_port" {
 variable "health_probe_path" {
   description = "Application Gateway Health Probe Path"
   type        = string
-  default     = "/"
+  default     = "/health"
 }
 
 variable "tags" {

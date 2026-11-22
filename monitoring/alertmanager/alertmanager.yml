@@ -1,0 +1,34 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default-webhook
+  group_by: ['alertname', 'role', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: default-webhook
+      group_wait: 10s
+      repeat_interval: 15m
+
+inhibit_rules:
+  - source_matchers:
+      - alertname="InstanceDown"
+    target_matchers:
+      - severity=~"warning|critical"
+    equal: ['instance']
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: ['instance', 'role']
+
+receivers:
+  - name: default-webhook
+    # 운영 적용 시 환경에 맞는 Slack/Email/Webhook 엔드포인트로 교체
+    webhook_configs:
+      - url: 'http://127.0.0.1:5001/alertmanager'
+        send_resolved: true

@@ -4,6 +4,8 @@
 terraform {
   required_version = ">= 1.14.0"
 
+  backend "s3" {}
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -89,6 +91,101 @@ locals {
 }
 
 # =================================================
+# AWS WAFv2 Web ACL for CloudFront (us-east-1)
+# =================================================
+
+resource "aws_wafv2_web_acl" "cloudfront" {
+  count    = var.enable_custom_domain && var.enable_waf ? 1 : 0
+  provider = aws.us_east_1
+
+  name        = "${var.environment}-cloudfront-waf"
+  description = "CloudFront edge WAF for SQLi, XSS, and common web exploits"
+  scope       = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 1
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.environment}-waf-common"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AWSManagedRulesSQLiRuleSet"
+    priority = 2
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesSQLiRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.environment}-waf-sqli"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 3
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${var.environment}-waf-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.environment}-cloudfront-waf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Name        = "${var.environment}-cloudfront-waf"
+    Environment = var.environment
+    Purpose     = "Edge-WAF-Protection"
+  }
+}
+
+# =================================================
 # CloudFront Distribution (Origin Failover)
 # =================================================
 
@@ -106,6 +203,7 @@ resource "aws_cloudfront_distribution" "main" {
   comment             = "Multi-Cloud DR (${var.traffic_mode})"
   default_root_object = ""
   aliases             = [var.domain_name]
+  web_acl_id          = var.enable_waf ? aws_wafv2_web_acl.cloudfront[0].arn : null
 
   # Origin Group - Automatic Failover
   origin_group {

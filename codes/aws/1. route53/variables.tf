@@ -91,3 +91,13 @@ variable "health_check_search_string" {
   type        = string
   default     = "PetClinic"
 }
+
+# =================================================
+# WAF Settings
+# =================================================
+
+variable "enable_waf" {
+  description = "CloudFront 엣지 AWS WAF 활성화 여부"
+  type        = bool
+  default     = true
+}

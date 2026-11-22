@@ -2,6 +2,8 @@
 # 평상시 항상 실행: Storage Account (백업용 + 점검 페이지) + Azure Front Door
 
 terraform {
+  backend "azurerm" {}
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
