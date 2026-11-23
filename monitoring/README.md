@@ -57,7 +57,7 @@ monitoring/
 
 ## 🚨 Prometheus 핵심 Alert Rules (`host_alerts.yml`)
 
-가비아의 IaaS/시스템 엔지니어링 관점에서 서버 가용성과 자원 고갈을 선제적으로 예방하기 위해 설계되었습니다.
+가용성과 자원 고갈을 선제적으로 예방하기 위해 IaaS/시스템 엔지니어링 관점에서 설계되었습니다.
 
 | 경보명 (Alert Name) | 임계 조건 (Expression) | 심각도 | 설명 |
 | :--- | :--- | :---: | :--- |
